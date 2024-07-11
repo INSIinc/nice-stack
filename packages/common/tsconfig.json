@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist",
+        "target": "ES2021",
+        "module": "CommonJS",
+        "declaration": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+    },
+    "include": [
+        "."
+    ],
+    "exclude": [
+        "prisma",
+        "node_modules",
+        "dist"
+    ]
+}

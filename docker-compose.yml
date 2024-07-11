@@ -1,0 +1,152 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres-vector:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=lxminiapp
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=Letusdoit000
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./volumes/minio:/data
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    command: server /data --console-address ":9001" -address ":9000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:9001/minio/health/live"
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.4.4
+    command: [ "milvus", "run", "standalone" ]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8081:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=insiinc@outlook.com
+      - PGADMIN_DEFAULT_PASSWORD=Letusdoit000
+  tusd:
+    image: tusproject/tusd
+    ports:
+      - "8080:8080"
+    environment:
+      - AWS_REGION=cn-north-1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+
+    command: -verbose -s3-bucket lxminiapp -s3-endpoint http://minio:9000
+    volumes:
+      - ./volumes/tusd:/data
+  aiservice:
+    image: aiservice:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://root:Letusdoit000@192.168.197.77:5432/lxminiapp
+      - MILVUS_URL=http://192.168.197.77:19530
+      - TUS_URL=http://192.168.197.77:8080
+      - APP_URL=http://192.168.197.77:3000
+    volumes:
+      - ./apps/ai-service:/app
+  app:
+    image: front-app
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_BACKEND_URL=http://192.168.197.77:3010
+      - REACT_APP_APP_NAME=两道防线
+      - REACT_APP_LX_APPID=13960192-15278080
+      - REACT_APP_TUS_URL=http://192.168.197.77:8080
+      - REACT_APP_APP_URL=http://192.168.197.77:3000
+      - REACT_APP_LX_ORG_ID=13960192-P9umMFP0J6wHAwDOO0FwPnJrSzo
+      - REACT_APP_LX_PASSPORT_DOMAIN=https://lxpub-cloud2.lanxin.cn:10443/user/passport
+    depends_on:
+      - db
+      - tusd
+  worker:
+    image: worker
+    ports:
+      - "3010:3010"
+    environment:
+      - DATABASE_URL=postgresql://root:Letusdoit000@192.168.197.77:5432/lxminiapp
+      - AI_SERVICE_URL=http://192.168.197.77:8000
+      - LX_APPID=13960192-15278080
+      - LX_SECRET=D9265475844D913CB9AD09D33D8BE0F9
+      - LX_APIGW_DOMAIN=https://lxpub-cloud2.lanxin.cn:10443/open/apigw
+      - LX_PASSPORT_DOMAIN=https://lxpub-cloud2.lanxin.cn:10443/user/passport
+      - LX_ORG_ID=13960192-P9umMFP0J6wHAwDOO0FwPnJrSzo
+      - APP_URL=http://192.168.197.77:3000
+      - TUS_URL=http://192.168.197.77:8080
+      - ADMIN_ID=13960192-JWuR2tnrb8YbI9G5ggBfxnrmvcJYj6lr
+      - ORG_SYNC_CRON=0 0 3 * * *
+      - DEADLINE_CRON=0 0 8 * * *
+      - MAIN_NODE=true
+      - APP_NAME=两道防线
+    depends_on:
+      - db
+    # command: node server.js
+    # volumes:
+    #   - ./volumes/worker:/app
+    # redis:
+    #   image: redis:latest
+    #   ports:
+    #     - "6379:6379"
+    #   volumes:
+    #     - redis_data:/data
+    #   restart: always
+volumes:
+  worker-data: # redis_data:
