@@ -1,8 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { unstable_httpBatchStreamLink, loggerLink } from '@trpc/client';
 import React, { useState } from 'react';
 import { api } from '../utils/trpc';
 import superjson from 'superjson';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createIDBPersister } from '../utils/idb';
 
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(() => new QueryClient());
@@ -31,9 +33,9 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
     );
     return (
         <api.Provider client={trpcClient} queryClient={queryClient}>
-            <QueryClientProvider client={queryClient}>
+            <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: createIDBPersister() }}>
                 {children}
-            </QueryClientProvider>
+            </PersistQueryClientProvider>
         </api.Provider>
     );
 }

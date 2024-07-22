@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist/esm",
+        "target": "ES2020",
+        "module": "ESNext",
+        "declaration": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "moduleResolution": "node",
+        // Include JSON files as modules.
+        "resolveJsonModule": true,
+    },
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "prisma",
+        "node_modules",
+        "dist"
+    ]
+}

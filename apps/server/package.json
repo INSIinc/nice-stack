@@ -27,7 +27,8 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "superjson-cjs": "^2.2.3",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@nicestack/common": "workspace:^"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
