@@ -1,0 +1,2 @@
+export type IconName = 'align-center' | 'align-justify' | 'align-left' | 'align-right' | 'arrow-drop-down' | 'bold' | 'check' | 'content' | 'copy' | 'edit' | 'get-text' | 'home' | 'horizontal-rule' | 'image' | 'italic' | 'link-off' | 'link' | 'logout' | 'react' | 'redo' | 'share' | 'strike' | 'text-indent' | 'text-outdent' | 'underline' | 'undo' | 'zoomin' | 'zoomout'
+      
