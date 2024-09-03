@@ -8,7 +8,6 @@ export class InitService {
     constructor(private readonly authService: AuthService) { }
     private async createRoles() {
         this.logger.log('Checking existing system roles');
-
         for (const role of InitRoles) {
             const existingRole = await db.role.findUnique({
                 where: { name: role.name },
@@ -26,10 +25,8 @@ export class InitService {
     }
     private async createTaxonomy() {
         this.logger.log('Checking existing taxonomies');
-
         const existingTaxonomies = await db.taxonomy.findMany();
         const existingTaxonomyNames = existingTaxonomies.map(taxonomy => taxonomy.name);
-
         for (const [index, taxonomy] of InitTaxonomies.entries()) {
             if (!existingTaxonomyNames.includes(taxonomy.name)) {
                 this.logger.log(`Creating taxonomy: ${taxonomy.name}`);
