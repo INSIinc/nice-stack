@@ -1,21 +1,19 @@
 import { INestApplication, Injectable } from '@nestjs/common';
+import { AuthRouter } from '@server/auth/auth.router';
 import { TrpcService } from '@server/trpc/trpc.service';
 import * as trpcExpress from '@trpc/server/adapters/express';
-import { HelloRouter } from '@server/hello/hello.router';
-
 @Injectable()
 export class TrpcRouter {
-    constructor(private readonly trpc: TrpcService, private readonly hello: HelloRouter) { }
-
+    constructor(private readonly trpc: TrpcService, private readonly auth: AuthRouter) { }
     appRouter = this.trpc.router({
-        hello: this.hello.router
+        auth: this.auth.router
     });
-
     async applyMiddleware(app: INestApplication) {
         app.use(
             `/trpc`,
             trpcExpress.createExpressMiddleware({
                 router: this.appRouter,
+                createContext: this.trpc.createContext
             }),
         );
     }

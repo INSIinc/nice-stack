@@ -1,0 +1,162 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Taxonomy {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  deletedAt DateTime?
+  terms     Term[]
+  order     Int
+
+  @@index([order, deletedAt])
+}
+
+model Relation {
+  id           String    @id @default(uuid())
+  aId          String
+  bId          String
+  aType        String
+  bType        String
+  relationType String
+  createdAt    DateTime? @default(now())
+
+  @@unique([aId, bId, aType, bType, relationType])
+  @@map("relations")
+}
+
+model Term {
+  id          String         @id @default(uuid())
+  name        String
+  taxonomy    Taxonomy?      @relation(fields: [taxonomyId], references: [id])
+  taxonomyId  String?
+  order       Int
+  description String?
+  parentId    String?
+  parent      Term?          @relation("ChildParent", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Term[]         @relation("ChildParent")
+  ancestors   TermAncestry[] @relation("DescendantToAncestor")
+  descendants TermAncestry[] @relation("AncestorToDescendant")
+
+  domainId     String?
+  domain       Department? @relation("TermDom", fields: [domainId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+  createdBy    String
+  createdStaff Staff?      @relation(fields: [staffId], references: [id])
+  staffId      String?
+
+  @@index([name]) // 对name字段建立索引，以加快基于name的查找速度
+  @@index([parentId]) // 对parentId字段建立索引，以加快基于parentId的查找速度
+  @@map("terms")
+}
+
+model TermAncestry {
+  id           String    @id @default(uuid())
+  ancestorId   String
+  descendantId String
+  relDepth     Int
+  ancestor     Term      @relation("AncestorToDescendant", fields: [ancestorId], references: [id], onDelete: Cascade)
+  descendant   Term      @relation("DescendantToAncestor", fields: [descendantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime? @default(now())
+}
+
+model Comment {
+  id          String    @id @default(uuid())
+  style       String
+  link        String?
+  title       String?
+  content     String
+  attachments String[]  @default([])
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdBy   String?
+
+  createdStaff Staff? @relation(fields: [createdBy], references: [id])
+
+  @@map("comments")
+}
+
+model Staff {
+  id            String         @id @default(uuid())
+  username      String         @unique
+  password      String
+  phoneNumber   String?        @unique
+  domainId      String?
+  deptId        String?
+  domain        Department?    @relation("DomainStaff", fields: [domainId], references: [id])
+  department    Department?    @relation("DeptStaff", fields: [deptId], references: [id])
+  registerToken String?
+  order         Int
+  deletedAt     DateTime?
+  system        Boolean?       @default(false)
+  comments      Comment[]
+  terms         Term[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("refreshTokens")
+}
+
+model Department {
+  id           String         @id @default(uuid())
+  name         String
+  order        Int
+  ancestors    DeptAncestry[] @relation("DescendantToAncestor")
+  descendants  DeptAncestry[] @relation("AncestorToDescendant")
+  parentId     String?        @map("parentId")
+  parent       Department?    @relation("ChildParent", fields: [parentId], references: [id])
+  children     Department[]   @relation("ChildParent")
+  domainTerms  Term[]         @relation("TermDom")
+  deletedAt    DateTime?
+  isDomain     Boolean?       @default(false)
+  domainStaffs Staff[]        @relation("DomainStaff")
+  deptStaffs   Staff[]        @relation("DeptStaff")
+}
+
+model DeptAncestry {
+  ancestorId   String
+  descendantId String
+  relDepth     Int
+  ancestor     Department @relation("AncestorToDescendant", fields: [ancestorId], references: [id])
+  descendant   Department @relation("DescendantToAncestor", fields: [descendantId], references: [id])
+
+  @@id([descendantId, ancestorId])
+  @@index([ancestorId]) // 对ancestorId字段建立索引，以加快基于ancestorId的查找速度
+  @@index([descendantId]) // 对descendantId字段建立索引，以加快基于descendantId的查找速度
+}
+
+model RoleMap {
+  id         String  @id @default(uuid())
+  objectId   String
+  roleId     String
+  domainId   String?
+  objectType String
+  role       Role    @relation(fields: [roleId], references: [id])
+}
+
+model Role {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  permissions String[]  @default([])
+  roleMaps    RoleMap[]
+  deletedAt   DateTime?
+  system      Boolean?  @default(false)
+}
