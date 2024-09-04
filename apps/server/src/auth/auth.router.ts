@@ -2,11 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { TrpcService } from '@server/trpc/trpc.service';
 import { AuthService } from './auth.service';
 import { AuthSchema } from '@nicestack/common';
-
 @Injectable()
 export class AuthRouter {
     constructor(private readonly trpc: TrpcService, private readonly authService: AuthService) { }
-
     router = this.trpc.router({
         login: this.trpc.procedure.input(AuthSchema.signInRequset).mutation(({ input }) => {
             return this.authService.signIn(input);
