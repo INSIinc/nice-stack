@@ -4,6 +4,8 @@ import {
 import MainPage from "../app/main/page";
 import ErrorPage from "../app/error";
 import LayoutPage from "../app/layout";
+import LoginPage from "../app/login";
+import WithAuth from "../components/auth/with-auth";
 
 export const router = createBrowserRouter([
     {
@@ -13,8 +15,13 @@ export const router = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <MainPage></MainPage>
+                element: <WithAuth><MainPage></MainPage></WithAuth>
             }
-        ]
+        ],
     },
+    {
+        path: '/login',
+        element: <LoginPage></LoginPage>
+    }
+
 ]);

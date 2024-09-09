@@ -8,7 +8,7 @@ export class StaffRouter {
   constructor(
     private readonly trpc: TrpcService,
     private readonly staffService: StaffService,
-  ) {}
+  ) { }
 
   router = this.trpc.router({
     create: this.trpc.procedure
@@ -43,11 +43,6 @@ export class StaffRouter {
       .input(StaffSchema.findMany) // Assuming StaffSchema.findMany is the Zod schema for finding staffs by keyword
       .query(async ({ input }) => {
         return await this.staffService.findMany(input);
-      }),
-    findUnique: this.trpc.procedure
-      .input(StaffSchema.findUnique)
-      .query(async ({ input }) => {
-        return await this.staffService.findUnique(input);
-      }),
+      })
   });
 }

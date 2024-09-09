@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TransformController } from './transform.controller';
 import { TransformService } from './transform.service';
+import { TransformRouter } from './transform.router';
+import { TrpcService } from '@server/trpc/trpc.service';
 
 @Module({
-  controllers: [TransformController],
-  providers: [TransformService]
+  providers: [TransformService, TransformRouter, TrpcService],
+  exports: [TransformRouter]
 })
-export class TransformModule {}
+export class TransformModule { }

@@ -9,6 +9,8 @@ export enum RelationType {
     READED = "READED",
     MESSAGE = "MESSAGE",
 }
+
+
 export enum RolePerms {
 	// Create Permissions 创建权限
 	CREATE_ALERT = "CREATE_ALERT", // 创建警报

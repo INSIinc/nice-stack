@@ -1,25 +1,23 @@
 import { QueryClient } from '@tanstack/react-query';
 import { unstable_httpBatchStreamLink, loggerLink } from '@trpc/client';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../utils/trpc';
 import superjson from 'superjson';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createIDBPersister } from '../utils/idb';
-
+import { env } from '../env';
+import { useAuth } from './auth-provider';
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(() => new QueryClient());
-    const [trpcClient] = useState(() =>
+    const { accessToken } = useAuth()
+    const trpcClient = useMemo(() =>
         api.createClient({
-
             links: [
                 unstable_httpBatchStreamLink({
-                    url: 'http://localhost:3000/trpc',
-                    // You can pass any HTTP headers you wish here
-                    async headers() {
-                        return {
-                            // authorization: getAuthCookie(),
-                        };
-                    },
+                    url: `${env.API_URL}/trpc`,
+                    headers: async () => ({
+                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                    }),
                     transformer: superjson
                 }),
                 loggerLink({
@@ -29,7 +27,7 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
                         (opts.direction === 'down' && opts.result instanceof Error),
                 }),
             ],
-        }),
+        }), [accessToken]
     );
     return (
         <api.Provider client={trpcClient} queryClient={queryClient}>

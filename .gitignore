@@ -230,3 +230,6 @@ $RECYCLE.BIN/
 *~
 
 docker-compose.yml
+.env
+packages/common/prisma/migrations
+volumes
