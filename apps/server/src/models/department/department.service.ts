@@ -125,7 +125,6 @@ export class DepartmentService {
   }
   async paginate(data: z.infer<typeof DepartmentSchema.paginate>) {
     const { page, pageSize, ids } = data;
-
     const [items, totalCount] = await Promise.all([
       db.department.findMany({
         skip: (page - 1) * pageSize,

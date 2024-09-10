@@ -8,12 +8,13 @@ import { RoleMapService } from '@server/rbac/rolemap.service';
 import { DepartmentService } from '@server/models/department/department.service';
 
 @Module({
-  providers: [AuthService, StaffService, RoleMapService,DepartmentService],
+  providers: [AuthService, StaffService, RoleMapService, DepartmentService],
   imports: [JwtModule.register({
     global: true,
     secret: env.JWT_SECRET,
     signOptions: { expiresIn: '60s' },
   }),],
-  controllers: [AuthController]
+  controllers: [AuthController],
+  exports: [AuthService]
 })
 export class AuthModule { }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import apiClient from '../utils/axios-client';
 import { UserProfile } from '@nicestack/common';
 
@@ -7,7 +7,7 @@ interface AuthContextProps {
     refreshToken: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    user: any;
+    user: UserProfile | null;
     login: (username: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     refreshAccessToken: () => Promise<void>;
@@ -17,23 +17,27 @@ interface AuthContextProps {
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
-export const useAuth = (): AuthContextProps => {
+
+export function useAuth(): AuthContextProps {
     const context = useContext(AuthContext);
     if (!context) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
 };
+
 interface AuthProviderProps {
     children: ReactNode;
 }
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+
+export function AuthProvider({ children }: AuthProviderProps) {
     const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('access_token'));
     const [refreshToken, setRefreshToken] = useState<string | null>(localStorage.getItem('refresh_token'));
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('access_token'));
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-    const [user, setUser] = useState<UserProfile | null>(null);
+    const [user, setUser] = useState<UserProfile | null>(JSON.parse(localStorage.getItem('user_profile') || 'null'));
+
     const initializeAuth = useCallback(() => {
         const storedAccessToken = localStorage.getItem('access_token');
         const storedRefreshToken = localStorage.getItem('refresh_token');
@@ -47,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             fetchUserProfile();
         }
     }, []);
+
     const refreshAccessToken = useCallback(async () => {
         if (!refreshToken) return;
         try {
@@ -70,11 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (intervalId) {
             clearInterval(intervalId);
         }
-
         await refreshAccessToken();
-
         const newIntervalId = setInterval(refreshAccessToken, 10 * 60 * 1000); // 10 minutes
-
         setIntervalId(newIntervalId);
     }, [intervalId, refreshAccessToken]);
 
@@ -110,6 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('access_token_expires_at');
             localStorage.removeItem('refresh_token_expires_at');
+            localStorage.removeItem('user_profile');
 
             setAccessToken(null);
             setRefreshToken(null);
@@ -131,7 +134,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const fetchUserProfile = useCallback(async () => {
         try {
             const response = await apiClient.get(`/auth/user-profile`);
-            setUser(response.data);
+            const userProfile = response.data;
+            setUser(userProfile);
+            localStorage.setItem('user_profile', JSON.stringify(userProfile));
         } catch (err) {
             console.error("Fetching user profile failed", err);
         }

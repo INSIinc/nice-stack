@@ -18,6 +18,9 @@
             ],
             "@web/*": [
                 "apps/web/*"
+            ],
+            "@admin/*": [
+                "apps/admin/*"
             ]
         }
     }

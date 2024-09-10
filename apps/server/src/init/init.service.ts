@@ -44,19 +44,27 @@ export class InitService {
 
     private async createRoot() {
         this.logger.log('Checking for root account');
-        const rootAccountExists = await db.staff.findUnique({
-            where: { phoneNumber: process.env.ADMIN_PHONE_NUMBER || '000000' },
+        const rootAccountExists = await db.staff.findFirst({
+            where: {
+                OR: [
+                    {
+                        phoneNumber: process.env.ADMIN_PHONE_NUMBER || '000000'
+                    },
+                    {
+                        username: 'root'
+                    }
+                ]
+            },
         });
         if (!rootAccountExists) {
             this.logger.log('Creating root account');
-            const rootStaff =await this.authService.signUp({
+            const rootStaff = await this.authService.signUp({
                 username: 'root',
-                password: 'admin'
+                password: 'root'
             })
             const rootRole = await db.role.findUnique({
                 where: { name: '根管理员' },
             });
-
             if (rootRole) {
                 this.logger.log('Assigning root role to root account');
                 await db.roleMap.create({

@@ -8,21 +8,22 @@ import { AuthGuard } from './auth.guard';
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
+    @UseGuards(AuthGuard)
     @Get("user-profile")
     async getUserProfile(@Req() request: Request) {
         const user: JwtPayload = (request as any).user
+        console.log(user)
+        // console.log(request)
         return this.authService.getUserProfile(user)
     }
     @Post('login')
     async login(@Body() body: z.infer<typeof AuthSchema.signInRequset>) {
         return this.authService.signIn(body);
     }
-
     @Post('signup')
     async signup(@Body() body: z.infer<typeof AuthSchema.signUpRequest>) {
         return this.authService.signUp(body);
     }
-
     @UseGuards(AuthGuard) // Protecting the refreshToken endpoint with AuthGuard
     @Post('refresh-token')
     async refreshToken(@Body() body: z.infer<typeof AuthSchema.refreshTokenRequest>) {

@@ -20,15 +20,24 @@ export class AuthService {
   ) { }
 
   async signIn(data: z.infer<typeof AuthSchema.signInRequset>) {
-    const { username, password } = data;
-    const staff = await db.staff.findUnique({ where: { username } });
+    const { username, password, phoneNumber } = data;
+    // Find the staff by either username or phoneNumber
+    const staff = await db.staff.findFirst({
+      where: {
+        OR: [
+          { username },
+          { phoneNumber }
+        ]
+      }
+    });
+
     if (!staff) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid username/phone number or password');
     }
 
     const isPasswordMatch = await bcrypt.compare(password, staff.password);
     if (!isPasswordMatch) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid username/phone number or password');
     }
 
     const payload: JwtPayload = { sub: staff.id, username: staff.username };
@@ -99,22 +108,27 @@ export class AuthService {
   }
 
   async signUp(data: z.infer<typeof AuthSchema.signUpRequest>) {
-    const { username, password } = data;
-    const existingUser = await db.staff.findUnique({ where: { username } });
+    const { username, password, phoneNumber } = data;
 
-    if (existingUser) {
+    const existingUserByUsername = await db.staff.findUnique({ where: { username } });
+    if (existingUserByUsername) {
       throw new BadRequestException('Username is already taken');
     }
-
+    if (phoneNumber) {
+      const existingUserByPhoneNumber = await db.staff.findUnique({ where: { phoneNumber } });
+      if (existingUserByPhoneNumber) {
+        throw new BadRequestException('Phone number is already taken');
+      }
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const staff = await this.staffService.create({
       username,
+      phoneNumber,
       password: hashedPassword,
     });
 
     return staff;
   }
-
   async logout(data: z.infer<typeof AuthSchema.logoutRequest>) {
     const { refreshToken } = data;
     await db.refreshToken.deleteMany({ where: { token: refreshToken } });

@@ -1,4 +1,4 @@
-import { Department, Staff } from "@prisma/client";
+import { Department, Staff, Term } from "@prisma/client";
 
 export interface DataNode {
     title: any;
@@ -39,3 +39,14 @@ export interface GenPerms {
     delete?: boolean;
     read?: boolean;
 }
+export type TermDto = Term & {
+    permissions: GenPerms;
+    children: TermDto[];
+    hasChildren: boolean;
+};
+export type DepartmentDto = Department & {
+    parent: DepartmentDto;
+    children: DepartmentDto[];
+    hasChildren: boolean;
+    staffs: StaffDto[];
+};

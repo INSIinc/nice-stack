@@ -5,12 +5,15 @@ import {
 import QueryProvider from './providers/query-provider'
 import { router } from './routes';
 import { AuthProvider } from './providers/auth-provider';
+import ThemeProvider from './providers/theme-provider';
 function App() {
 
   return (
     <AuthProvider>
       <QueryProvider>
-        <RouterProvider router={router}></RouterProvider>
+        <ThemeProvider>
+          <RouterProvider router={router}></RouterProvider>
+        </ThemeProvider>
       </QueryProvider>
     </AuthProvider>
   )

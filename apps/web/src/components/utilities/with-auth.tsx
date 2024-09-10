@@ -1,7 +1,7 @@
 import { useAuth } from '@web/src/providers/auth-provider';
 import { RolePerms } from '@nicestack/common';
 import { ReactNode } from 'react';
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 // Define a type for the props that the HOC will accept.
 interface WithAuthProps {
     permissions?: RolePerms[];
@@ -10,12 +10,13 @@ interface WithAuthProps {
 // Create the HOC function.
 export default function WithAuth({ options = {}, children }: { children: ReactNode, options?: WithAuthProps }) {
     const { isAuthenticated, user, isLoading } = useAuth();
+    const location = useLocation()
     if (isLoading) {
         return <div>Loading...</div>;
     }
     // If the user is not authenticated, redirect them to the login page.
     if (!isAuthenticated) {
-        return <Navigate to={'/login'}></Navigate>
+        return <Navigate to={`/login?redirect_url=${location.pathname}`} ></Navigate>
 
     }
     if (options.permissions && user) {

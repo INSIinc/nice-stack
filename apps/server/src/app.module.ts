@@ -9,9 +9,10 @@ import { TransformModule } from './transform/transform.module';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), TrpcModule, RedisModule, QueueModule, TransformModule, AuthModule],
+  imports: [ScheduleModule.forRoot(), TrpcModule, RedisModule, QueueModule, TransformModule, AuthModule, TasksModule],
   providers: [RedisService, SocketGateway, ConfigService],
 })
 export class AppModule { }

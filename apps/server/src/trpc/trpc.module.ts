@@ -7,9 +7,12 @@ import { StaffRouter } from '@server/models/staff/staff.router';
 import { StaffModule } from '../models/staff/staff.module';
 import { DepartmentModule } from '@server/models/department/department.module';
 import { TransformModule } from '@server/transform/transform.module';
+import { TermModule } from '@server/models/term/term.module';
+import { TaxonomyModule } from '@server/models/taxonomy/taxonomy.module';
+import { RbacModule } from '@server/rbac/rbac.module';
 
 @Module({
-  imports: [StaffModule, DepartmentModule, TransformModule],
+  imports: [StaffModule, DepartmentModule, TransformModule, TermModule, TaxonomyModule, RbacModule],
   controllers: [],
   providers: [TrpcService, TrpcRouter],
 })

@@ -9,7 +9,6 @@ export class DepartmentRouter {
     private readonly trpc: TrpcService,
     private readonly departmentService: DepartmentService, // inject DepartmentService
   ) {}
-
   router = this.trpc.router({
     create: this.trpc.protectProcedure
       .input(DepartmentSchema.create) // expect input according to the schema
