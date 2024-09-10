@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { db, InitRoles, InitTaxonomies, ObjectType } from "@nicestack/common";
 import { AuthService } from '@server/auth/auth.service';
+import { MinioService } from '@server/minio/minio.service';
 
 @Injectable()
 export class InitService {
     private readonly logger = new Logger(InitService.name);
-    constructor(private readonly authService: AuthService) { }
+    constructor(private readonly authService: AuthService, private readonly minioService: MinioService) { }
     private async createRoles() {
         this.logger.log('Checking existing system roles');
         for (const role of InitRoles) {
@@ -41,7 +42,9 @@ export class InitService {
             }
         }
     }
-
+    private async createBucket() {
+        await this.minioService.createBucket('app')
+    }
     private async createRoot() {
         this.logger.log('Checking for root account');
         const rootAccountExists = await db.staff.findFirst({
@@ -91,5 +94,8 @@ export class InitService {
 
         this.logger.log('Initializing taxonomies');
         await this.createTaxonomy();
+
+        this.logger.log('Initialize minio')
+        await this.createBucket()
     }
 }

@@ -1,10 +1,8 @@
 import { Controller, Post, Body, UseGuards, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthSchema, JwtPayload } from '@nicestack/common';
-
-import { z } from 'zod';
+import { z } from '@nicestack/common';
 import { AuthGuard } from './auth.guard';
-
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
