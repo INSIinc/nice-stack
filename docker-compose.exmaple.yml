@@ -6,7 +6,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=lxminiapp
+      - POSTGRES_DB=app
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=Letusdoit000
     volumes:
@@ -17,11 +17,11 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - ./volumes/minio:/minio_data
+      - ./volumes/minio:/data
     environment:
       - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_JWT_SECRET=minioadmin
-    command: minio server /minio_data --console-address ":9001" -address ":9000"
+      - MINIO_SECRET_KEY=minioadmin
+    command: server /data --console-address ":9001" -address ":9000"
     healthcheck:
       test:
         [
@@ -33,45 +33,6 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-  # etcd:
-  #   container_name: milvus-etcd
-  #   image: quay.io/coreos/etcd:v3.5.5
-  #   environment:
-  #     - ETCD_AUTO_COMPACTION_MODE=revision
-  #     - ETCD_AUTO_COMPACTION_RETENTION=1000
-  #     - ETCD_QUOTA_BACKEND_BYTES=4294967296
-  #     - ETCD_SNAPSHOT_COUNT=50000
-  #   volumes:
-  #     - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
-  #   command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
-  #   healthcheck:
-  #     test: [ "CMD", "etcdctl", "endpoint", "health" ]
-  #     interval: 30s
-  #     timeout: 20s
-  #     retries: 3
-  # standalone:
-  #   container_name: milvus-standalone
-  #   image: milvusdb/milvus:v2.4.4
-  #   command: [ "milvus", "run", "standalone" ]
-  #   security_opt:
-  #     - seccomp:unconfined
-  #   environment:
-  #     ETCD_ENDPOINTS: etcd:2379
-  #     MINIO_ADDRESS: minio:9000
-  #   volumes:
-  #     - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
-  #   healthcheck:
-  #     test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
-  #     interval: 30s
-  #     start_period: 90s
-  #     timeout: 20s
-  #     retries: 3
-  #   ports:
-  #     - "19530:19530"
-  #     - "9091:9091"
-  #   depends_on:
-  #     - "etcd"
-  #     - "minio"
   pgadmin:
     image: dpage/pgadmin4
     ports:
@@ -88,55 +49,12 @@ services:
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=minioadmin
 
-    command: -verbose -s3-bucket lxminiapp -s3-endpoint http://minio:9000
+    command: -verbose -s3-bucket app -s3-endpoint http://minio:9000
     volumes:
       - ./volumes/tusd:/data
   redis:
-        image: redis:latest
-        ports:
-            - "6379:6379"
-        volumes:
-            - ./volumes/redis:/data
-  # app:
-  #   image: lxminiapp
-  #   ports:
-  #     - "3000:80"
-  #   environment:
-  #     - DATABASE_URL=postgresql://root:Letusdoit000@192.168.129.77:5432/lxminiapp?encoding=UTF8
-  #     - REACT_APP_LX_APPID=13960192-15278080
-  #     - REACT_APP_APP_URL=http://192.168.129.77:3000
-  #     - REACT_APP_TUS_URL=http://192.168.129.77:8080
-  #     - REACT_APP_BACKEND_URL=http://192.168.129.77:3010
-  #     - REACT_APP_APP_NAME=两道防线
-  #     - REACT_APP_IMPORT_SDK=TRUE
-  #   depends_on:
-  #     - db
-  #     - tusd
-
-  # worker:
-  #   image: worker
-  #   ports:
-  #     - "3010:3010"
-  #   environment:
-  #     - DATABASE_URL=postgresql://root:Letusdoit000@192.168.129.77:5432/lxminiapp?encoding=UTF8
-  #     - LX_APPID=13960192-15278080
-  #     - LX_SECRET=D9265475844D913CB9AD09D33D8BE0F9
-  #     - LX_APIGW_DOMAIN=https://lxpub-cloud2.lanxin.cn:10443/open/apigw
-  #     - LX_PASSPORT_DOMAIN=https://lxpub-cloud2.lanxin.cn:10443/user/passport
-  #     - TUS_URL=http://192.168.129.77:8080
-  #     - APP_URL=http://192.168.129.77:3000
-  #     - LX_ORG_ID=13960192-0
-  #     - ADMIN_ID=13960192-JWuR2tnrb8YbI9G5ggBfxnrmvcJYj6lr
-  #     - ORG_SYNC_CRON=0 0 3 * * *
-  #     - DEADLINE_CRON=0 0 8 * * *
-  #     - APP_NAME=两道防线
-  #   depends_on:
-  #     - db
-  #   command: node server.js
-  #   volumes:
-  #     - worker-data:/app
-volumes:
-  worker-data:
-networks:
-  default:
-    name: nice-library
+    image: redis:latest
+    ports:
+        - "6379:6379"
+    volumes:
+        - ./volumes/redis:/data
