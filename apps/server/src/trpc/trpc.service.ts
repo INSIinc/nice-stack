@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson-cjs';
 import * as trpcExpress from '@trpc/server/adapters/express';
@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 type Context = Awaited<ReturnType<TrpcService['createContext']>>;
 @Injectable()
 export class TrpcService {
-    constructor(private readonly jwtService: JwtService) { }
+
     async createContext({
         req,
         res,
@@ -17,10 +17,11 @@ export class TrpcService {
         const token = req.headers.authorization?.split(' ')[1];
         let tokenData: JwtPayload | undefined = undefined;
         let staff: Staff | undefined = undefined;
+        console.log(token)
         if (token) {
             try {
-                // Verify JWT token and extract tokenData
-                tokenData = await this.jwtService.verifyAsync(token, { secret: env.JWT_SECRET }) as JwtPayload;
+                const jwtService = new JwtService()
+                tokenData = await jwtService.verifyAsync(token, { secret: env.JWT_SECRET }) as JwtPayload;
                 if (tokenData) {
                     // Fetch staff details from the database using tokenData.id
                     staff = await db.staff.findUnique({ where: { id: tokenData.sub } });
@@ -35,7 +36,7 @@ export class TrpcService {
         }
 
         return {
-            staff,
+            staff
         };
     };
     trpc = initTRPC.context<Context>().create({

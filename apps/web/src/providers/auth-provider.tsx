@@ -10,6 +10,7 @@ interface AuthContextProps {
     user: UserProfile | null;
     login: (username: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    signup: (username: string, password: string, phoneNumber?: string) => Promise<void>;
     refreshAccessToken: () => Promise<void>;
     initializeAuth: () => void;
     startTokenRefreshInterval: () => void;
@@ -102,6 +103,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    const signup = async (username: string, password: string, phoneNumber?: string): Promise<void> => {
+        try {
+            setIsLoading(true);
+            const response = await apiClient.post(`/auth/signup`, { username, password, phoneNumber });
+            // const { access_token, refresh_token, access_token_expires_at, refresh_token_expires_at } = response.data;
+            // localStorage.setItem('access_token', access_token);
+            // localStorage.setItem('refresh_token', refresh_token);
+            // localStorage.setItem('access_token_expires_at', access_token_expires_at);
+            // localStorage.setItem('refresh_token_expires_at', refresh_token_expires_at);
+            // setAccessToken(access_token);
+            // setRefreshToken(refresh_token);
+            // setIsAuthenticated(true);
+            // startTokenRefreshInterval();
+            // fetchUserProfile();
+        } catch (err) {
+            console.error("Signup failed", err);
+            throw new Error("Signup failed");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const logout = async (): Promise<void> => {
         try {
             setIsLoading(true);
@@ -154,6 +177,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user,
         login,
         logout,
+        signup,
         refreshAccessToken,
         initializeAuth,
         startTokenRefreshInterval,

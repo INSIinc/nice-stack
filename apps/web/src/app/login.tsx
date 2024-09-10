@@ -8,29 +8,28 @@ import SineWave from '../components/presentation/animation/sine-wave';
 const LoginPage: React.FC = () => {
     const [showLogin, setShowLogin] = useState(true);
     const [registerLoading, setRegisterLoading] = useState(false);
-    const { login, isAuthenticated } = useAuth();
+    const { login, isAuthenticated, signup } = useAuth();
     const loginFormRef = useRef<any>(null);
     const registerFormRef = useRef<any>(null);
     const location = useLocation();
-    const navigate = useNavigate()
+    const navigate = useNavigate();
+
     const onFinishLogin = async (values: any) => {
         try {
             const { username, password } = values;
             await login(username, password);
             message.success('登录成功！');
         } catch (err) {
-            message.warning('用户名或密码错误！');
+            message.error('用户名或密码错误！');
             console.error(err);
         }
     };
 
     const onFinishRegister = async (values: any) => {
         setRegisterLoading(true);
+        const { username, password, phoneNumber } = values;
         try {
-            // await wp.RegisterUser().create({
-            //     ...values,
-            //     custom_data: { org_unit: values.org_unit },
-            // });
+            await signup(username, password, phoneNumber);
             message.success('注册成功！');
             setShowLogin(true);
             loginFormRef.current.submit();
@@ -51,13 +50,10 @@ const LoginPage: React.FC = () => {
 
     return (
         <div className="flex justify-center items-center h-screen w-full bg-layout">
-            <div className="flex items-center transition-all overflow-hidden bg-container rounded-xl" style={{ width: 800, height: 600, padding: 0 }}>
+            <div className="flex items-center transition-all overflow-hidden bg-container rounded-xl " style={{ width: 800, height: 600 }}>
                 <div className="flex-1 py-10 px-10">
                     {showLogin ? (
                         <>
-                            <Link to="/" className="text-gray-400 text-sm hover:text-primary hover:cursor-pointer">
-                                返回首页
-                            </Link>
                             <div className="text-center text-2xl text-primary select-none">
                                 <span className="px-2">登录</span>
                             </div>
@@ -77,33 +73,28 @@ const LoginPage: React.FC = () => {
                             </Form>
                         </>
                     ) : (
-                        <>
-                            <div
-                                onClick={() => setShowLogin(true)}
-                                className="text-sm text-gray-400 hover:cursor-pointer hover:text-primary"
-                            >
-                                返回登录
-                            </div>
+                        <div >
+
                             <div className="text-center text-2xl text-primary">注册</div>
                             <Form requiredMark="optional" ref={registerFormRef} onFinish={onFinishRegister} layout="vertical" size="large">
                                 <Form.Item name="username" label="用户名" rules={[
                                     { required: true, message: '请输入用户名' },
                                     { min: 3, max: 15, message: '用户名长度在 3 到 15 个字符' }
                                 ]}>
-                                    <Input placeholder="输入用户名" />
+                                    <Input />
                                 </Form.Item>
-
-                                <Form.Item name="deptId" label="单位" rules={[{ required: true, message: '请选择单位' }]}>
-                                    <DepartmentSelect />
+                                <Form.Item name="phoneNumber" label="手机号" rules={[
+                                    { required: false },
+                                    { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号' }
+                                ]}>
+                                    <Input />
                                 </Form.Item>
-
                                 <Form.Item name="password" label="密码" rules={[
                                     { required: true, message: '请输入密码' },
                                     { min: 6, message: '密码长度不能小于 6 位' }
                                 ]}>
-                                    <Input.Password placeholder="输入密码" />
+                                    <Input.Password />
                                 </Form.Item>
-
                                 <Form.Item name="repeatPass" label="确认密码" dependencies={['password']} hasFeedback rules={[
                                     { required: true, message: '请再次输入密码' },
                                     ({ getFieldValue }) => ({
@@ -115,7 +106,7 @@ const LoginPage: React.FC = () => {
                                         }
                                     })
                                 ]}>
-                                    <Input.Password placeholder="确认密码" />
+                                    <Input.Password />
                                 </Form.Item>
 
                                 <div className="flex items-center justify-center">
@@ -124,7 +115,7 @@ const LoginPage: React.FC = () => {
                                     </Button>
                                 </div>
                             </Form>
-                        </>
+                        </div>
                     )}
                 </div>
                 <div className={`transition-all h-full flex-1 text-white p-10 flex items-center justify-center bg-primary`}>

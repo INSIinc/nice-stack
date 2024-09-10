@@ -12,8 +12,6 @@ export class AuthController {
     @Get("user-profile")
     async getUserProfile(@Req() request: Request) {
         const user: JwtPayload = (request as any).user
-        console.log(user)
-        // console.log(request)
         return this.authService.getUserProfile(user)
     }
     @Post('login')

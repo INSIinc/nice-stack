@@ -10,9 +10,14 @@ import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { TasksModule } from './tasks/tasks.module';
+import { JwtModule } from '@nestjs/jwt';
+import { env } from './env';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), TrpcModule, RedisModule, QueueModule, TransformModule, AuthModule, TasksModule],
+  imports: [ScheduleModule.forRoot(), JwtModule.register({
+    global: true,
+    secret: env.JWT_SECRET
+  }), TrpcModule, RedisModule, QueueModule, TransformModule, AuthModule, TasksModule],
   providers: [RedisService, SocketGateway, ConfigService],
 })
 export class AppModule { }
