@@ -56,7 +56,7 @@ const emitChangeHandlers: EmitChangeHandlers = {
             dept_name: data.department?.name,
             domain_name: data.domain?.name
         };
-   
+
         // 发出员工数据变更事件
         EventBus.emit("dataChanged", {
             type: ObjectType.STAFF,
