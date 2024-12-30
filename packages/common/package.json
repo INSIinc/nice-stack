@@ -1,35 +1,35 @@
 {
   "name": "@nicestack/common",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate": "pnpm prisma generate",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build": "pnpm run build:esm && pnpm run build:cjs",
+    "build": "pnpm generate && tsup",
+    "dev": "pnpm generate && tsup --watch ",
     "studio": "pnpm prisma studio",
     "db:clear": "rm -rf prisma/migrations && pnpm prisma migrate dev --name init",
-    "watch:esm": "nodemon --watch src -e ts,tsx --exec 'pnpm run build:esm'",
-    "watch:cjs": "nodemon --watch src -e ts,tsx --exec 'pnpm run build:cjs'",
-    "watch:prisma": "nodemon --watch prisma/schema.prisma  --exec 'pnpm run generate'",
-    "dev": "concurrently \"pnpm run watch:prisma\" \"pnpm run watch:esm\" \"pnpm run watch:cjs\" "
+    "postinstall": "pnpm generate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^5.16.2",
-    "prisma": "^5.16.2",
-    "zod": "^3.23.8"
+    "@prisma/client": "5.17.0",
+    "prisma": "5.17.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.8",
+    "yjs": "^13.6.20",
+    "lib0": "^0.2.98"
   },
   "devDependencies": {
     "@types/node": "^20.3.1",
-    "concurrently": "^8.2.2",
-    "nodemon": "^3.1.4",
     "ts-node": "^10.9.1",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.4",
+    "zod-prisma-types": "^3.2.1",
+    "concurrently": "^8.0.0",
+    "tsup": "^8.3.5",
+    "rimraf": "^6.0.1"
   }
 }

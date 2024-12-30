@@ -1,7 +1,7 @@
-import DepartmentList from "@web/src/components/models/department/department-list";
+import DeptEditor from "@web/src/components/models/department/dept-editor";
 
 export default function DepartmentAdminPage() {
-    return <div className=" flex-grow p-2 bg-white rounded-xl flex">
-        <DepartmentList></DepartmentList>
+    return <div className=" flex-grow  bg-white rounded-xl">
+        <DeptEditor></DeptEditor>
     </div>
 }

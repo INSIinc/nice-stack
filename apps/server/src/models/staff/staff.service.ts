@@ -1,178 +1,180 @@
 import { Injectable } from '@nestjs/common';
-import { db, ObjectType, Staff, StaffSchema, z } from '@nicestack/common';
-import { TRPCError } from '@trpc/server';
+import {
+  db,
+  StaffMethodSchema,
+  ObjectType,
+  UserProfile,
+  Prisma,
+} from '@nicestack/common';
 import { DepartmentService } from '../department/department.service';
+import { z } from 'zod';
+import { BaseService } from '../base/base.service';
+import * as argon2 from 'argon2';
+import EventBus, { CrudOperation } from '@server/utils/event-bus';
+
 @Injectable()
-export class StaffService {
-    constructor(private readonly departmentService: DepartmentService) { }
+export class StaffService extends BaseService<Prisma.StaffDelegate> {
 
-    /**
-     *  获取某一单位下所有staff的记录
-     * @param deptId 单位的id
-     * @returns 查到的staff记录
-     */
-    async findByDept(data: z.infer<typeof StaffSchema.findByDept>) {
-        const { deptId, domainId } = data;
-        const childDepts = await this.departmentService.getAllChildDeptIds(deptId);
-        const result = await db.staff.findMany({
-            where: {
-                deptId: { in: [...childDepts, deptId] },
-                domainId,
-            },
+  constructor(private readonly departmentService: DepartmentService) {
+    super(db, ObjectType.STAFF, true);
+  }
+  /**
+   *  获取某一单位下所有staff的记录
+   * @param deptId 单位的id
+   * @returns 查到的staff记录
+   */
+  async findByDept(data: z.infer<typeof StaffMethodSchema.findByDept>) {
+    const { deptId, domainId } = data;
+    const childDepts = await this.departmentService.getDescendantIds(deptId, true);
+    const result = await db.staff.findMany({
+      where: {
+        deptId: { in: childDepts },
+        domainId,
+      },
+    });
+    return result;
+  }
+  async create(args: Prisma.StaffCreateArgs) {
+    const { data } = args;
+    await this.validateUniqueFields(data);
+    const createData = {
+      ...data,
+      password: await argon2.hash((data.password || '123456') as string),
+    };
+    const result = await super.create({ ...args, data: createData });
+    this.emitDataChangedEvent(result, CrudOperation.CREATED);
+    return result;
+  }
+  async update(args: Prisma.StaffUpdateArgs) {
+    const { data, where } = args;
+    await this.validateUniqueFields(data, where.id);
+    const updateData = {
+      ...data,
+      ...(data.password && { password: await argon2.hash(data.password as string) })
+    };
+    const result = await super.update({ ...args, data: updateData });
+    this.emitDataChangedEvent(result, CrudOperation.UPDATED);
+    return result;
+  }
+  private async validateUniqueFields(data: any, excludeId?: string) {
+    const uniqueFields = [
+      { field: 'officerId', errorMsg: (val: string) => `证件号为${val}的用户已存在` },
+      { field: 'phoneNumber', errorMsg: (val: string) => `手机号为${val}的用户已存在` },
+      { field: 'username', errorMsg: (val: string) => `帐号为${val}的用户已存在` }
+    ];
+    for (const { field, errorMsg } of uniqueFields) {
+      if (data[field]) {
+        const count = await db.staff.count({
+          where: {
+            [field]: data[field],
+            ...(excludeId && { id: { not: excludeId } })
+          }
         });
-        return result;
-    }
-    /**
-     * 创建新的员工记录
-     * @param data 员工创建信息
-     * @returns 新创建的员工记录
-     */
-    async create(data: z.infer<typeof StaffSchema.create>) {
-        const { ...others } = data;
-
-        try {
-            return await db.$transaction(async (transaction) => {
-                // 获取当前最大order值
-                const maxOrder = await transaction.staff.aggregate({
-                    _max: { order: true },
-                });
-                // 新员工的order值比现有最大order值大1
-                const newOrder = (maxOrder._max.order ?? -1) + 1;
-                // 创建新员工记录
-                const newStaff = await transaction.staff.create({
-                    data: { ...others, order: newOrder },
-                    include: { domain: true, department: true },
-                });
-                return newStaff;
-            });
-        } catch (error) {
-            console.error('Failed to create staff:', error);
-            throw error;
+        if (count > 0) {
+          throw new Error(errorMsg(data[field]));
         }
+      }
     }
-    /**
-     * 更新员工记录
-     * @param data 包含id和其他更新字段的对象
-     * @returns 更新后的员工记录
-     */
-    async update(data: z.infer<typeof StaffSchema.update>) {
-        const { id, ...others } = data;
-        try {
-            return await db.$transaction(async (transaction) => {
-                // 更新员工记录
-                const updatedStaff = await transaction.staff.update({
-                    where: { id },
-                    data: others,
-                    include: { domain: true, department: true },
-                });
-                return updatedStaff;
-            });
-        } catch (error) {
-            console.error('Failed to update staff:', error);
-            throw error;
-        }
-    }
-    /**
-     * 批量删除员工记录（软删除）
-     * @param data 包含要删除的员工ID数组的对象
-     * @returns 删除操作结果，包括删除的记录数
-     */
-    async batchDelete(data: z.infer<typeof StaffSchema.batchDelete>) {
-        const { ids } = data;
-
-        if (!ids || ids.length === 0) {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'No IDs provided for deletion.',
-            });
-        }
-        const deletedStaffs = await db.staff.updateMany({
-            where: { id: { in: ids } },
-            data: { deletedAt: new Date() },
-        });
-        if (!deletedStaffs.count) {
-            throw new TRPCError({
-                code: 'NOT_FOUND',
-                message: 'No taxonomies were found with the provided IDs.',
-            });
-        }
-        return { success: true, count: deletedStaffs.count };
-    }
-    /**
-     * 分页查询员工
-     * @param data 包含分页参数、域ID和部门ID的对象
-     * @returns 员工列表及总记录数
-     */
-    async paginate(data: z.infer<typeof StaffSchema.paginate>) {
-        const { page, pageSize, domainId, deptId, ids } = data;
-        const childDepts = await this.departmentService.getAllChildDeptIds(deptId);
-        const [items, totalCount] = await Promise.all([
-            db.staff.findMany({
-                skip: (page - 1) * pageSize,
-                take: pageSize,
-                orderBy: { order: 'asc' },
-                where: {
-                    id: ids ? { in: ids } : undefined,
-                    deletedAt: null,
-                    domainId,
-                    deptId: deptId ? { in: [...childDepts, deptId] } : undefined,
-                },
-                include: { domain: true, department: true },
-            }),
-            db.staff.count({
-                where: {
-                    deletedAt: null,
-                    domainId,
-                    deptId: deptId ? { in: [...childDepts, deptId] } : undefined,
-                },
-            }),
-        ]);
-        const processedItems = await Promise.all(
-            items.map((item) => this.genStaffDto(item)),
-        );
-        return { items: processedItems, totalCount };
-    }
-    /**
-     * 根据关键词或ID集合查找员工
-     * @param data 包含关键词、域ID和ID集合的对象
-     * @returns 匹配的员工记录列表
-     */
-    async findMany(data: z.infer<typeof StaffSchema.findMany>) {
-        const { keyword, domainId, ids } = data;
-
-        return await db.staff.findMany({
-            where: {
-                deletedAt: null,
-                domainId,
-                OR: [
-                    { username: { contains: keyword } },
-                    {
-                        id: { in: ids },
-                    },
-                ],
-            },
-            orderBy: { order: 'asc' },
-            take: 10,
-        });
-    }
-    /**
-     * 生成员工的数据传输对象（DTO）
-     * @param staff 员工记录
-     * @returns 含角色ID列表的员工DTO
-     */
-    private async genStaffDto(staff: Staff) {
-        const roleMaps = await db.roleMap.findMany({
-            where: {
-                domainId: staff.domainId,
-                objectId: staff.id,
-                objectType: ObjectType.STAFF,
-            },
-            include: { role: true },
-        });
-        const roleIds = roleMaps.map((roleMap) => roleMap.role.id);
-        return { ...staff, roleIds };
-    }
+  }
 
 
+  private emitDataChangedEvent(data: any, operation: CrudOperation) {
+    EventBus.emit("dataChanged", {
+      type: this.objectType,
+      operation,
+      data,
+    });
+  }
+
+  /**
+  * 更新员工DomainId
+  * @param data 包含domainId对象
+  * @returns 更新后的员工记录
+  */
+  async updateUserDomain(data: { domainId?: string }, staff?: UserProfile) {
+    let { domainId } = data;
+    if (staff.domainId !== domainId) {
+      const result = await this.update({
+        where: { id: staff.id },
+        data: {
+          domainId,
+          deptId: null,
+        },
+      });
+      return result;
+    } else {
+      return staff;
+    }
+  }
+
+
+  // /**
+  //  * 根据关键词或ID集合查找员工
+  //  * @param data 包含关键词、域ID和ID集合的对象
+  //  * @returns 匹配的员工记录列表
+  //  */
+  // async findMany(data: z.infer<typeof StaffMethodSchema.findMany>) {
+  //   const { keyword, domainId, ids, deptId, limit = 30 } = data;
+  //   const idResults = ids
+  //     ? await db.staff.findMany({
+  //       where: {
+  //         id: { in: ids },
+  //         deletedAt: null,
+  //         domainId,
+  //         deptId,
+  //       },
+  //       select: {
+  //         id: true,
+  //         showname: true,
+  //         username: true,
+  //         deptId: true,
+  //         domainId: true,
+  //         department: true,
+  //         domain: true,
+  //       },
+  //     })
+  //     : [];
+
+  //   const mainResults = await db.staff.findMany({
+  //     where: {
+  //       deletedAt: null,
+  //       domainId,
+  //       deptId,
+  //       OR: (keyword || ids) && [
+  //         { showname: { contains: keyword } },
+  //         {
+  //           username: {
+  //             contains: keyword,
+  //           },
+  //         },
+  //         { phoneNumber: { contains: keyword } },
+  //         // {
+  //         //   id: { in: ids },
+  //         // },
+  //       ],
+  //     },
+  //     select: {
+  //       id: true,
+  //       showname: true,
+  //       username: true,
+  //       deptId: true,
+  //       domainId: true,
+  //       department: true,
+  //       domain: true,
+  //     },
+  //     orderBy: { order: 'asc' },
+  //     take: limit !== -1 ? limit : undefined,
+  //   });
+  //   // Combine results, ensuring no duplicates
+  //   const combinedResults = [
+  //     ...mainResults,
+  //     ...idResults.filter(
+  //       (idResult) =>
+  //         !mainResults.some((mainResult) => mainResult.id === idResult.id),
+  //     ),
+  //   ];
+
+  //   return combinedResults;
+  // }
 
 }

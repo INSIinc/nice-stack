@@ -2,21 +2,22 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vite + React + TS</title>
-  <script>
-    window.env = {
-      VITE_APP_TUS_URL: "$VITE_APP_TUS_URL",
-      VITE_APP_API_URL: "$VITE_APP_API_URL"
-    };
-  </script>
+	<meta charset="UTF-8" />
+	<link rel="icon" type="image/svg+xml" href="/vite.svg" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<script>
+		window.env = {
+			VITE_APP_SERVER_IP: "$VITE_APP_SERVER_IP",
+			VITE_APP_APP_NAME: "$VITE_APP_APP_NAME",
+			VITE_APP_VERSION: "$VITE_APP_VERSION",
+		};
+	</script>
+	<title>两道防线管理后台</title>
 </head>
 
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+	<div id="root"></div>
+	<script type="module" src="/src/main.tsx"></script>
 </body>
 
 </html>

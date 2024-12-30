@@ -1,0 +1,42 @@
+.ag-theme-alpine {
+    --ag-primary-color: var(--color-primary);
+    --ag-alpine-active-color: var(--color-primary);
+    --ag-background-color: var(--color-bg-container);
+    --ag-foreground-color: var(--colorText);
+    --ag-borders-critical: solid 1px;
+    --ag-critical-border-color: var(--color-border-secondary);
+    --ag-borders: 1px solid;
+    --ag-borders-input: solid 1px;
+    --ag-border-color: var(--color-border-secondary);
+    --ag-secondary-border-color: var(--color-border-secondary);
+    --ag-secondary-foreground-color: var(--color-text-tertiary);
+    /* --ag-border-radius: 2px; */
+    --ag-header-column-separator-display: block;
+    --ag-header-column-separator-height: 30%;
+    --ag-header-column-separator-width: 2px;
+    --ag-header-column-separator-color: var(--color-fill-secondary);
+    --ag-font-size: var(--fontSize);
+    --ag-header-background-color: white;
+    --ag-selected-row-background-color: var(--color-border-primary);
+    --ag-range-selection-border-color: var(--color-border-primary);
+    --ag-header-font-size: var(--fontSize);
+    --ag-header-font-weight: 600;
+    --ag-header-foreground-color: var(--color-primary);
+    --ag-row-border-style: solid;
+    --ag-row-border-width: 1px;
+    --ag-row-border-color: var(--color-border-secondary);
+    --ag-row-hover-color: var(--color-bg-text-hover);
+    --ag-padding-horizontal: 0.7rem;
+    --ag-padding-vertical: 0.9rem;
+    --ag-side-panel-border-width: 1px;
+    --ag-side-panel-border-color: var(--color-border-secondary);
+    --ag-spacing: 6px;
+    --ag-odd-row-background-color: var(--color-fill-quaternary);
+    --ag-wrapper-border-width: 0px;
+    /* --ag-wrapper-border-color: var(--color-border-secondary); */
+    /* --ag-wrapper-border-radius: 10px; */
+}
+
+.ag-root-wrapper {
+    border: 0px;
+}

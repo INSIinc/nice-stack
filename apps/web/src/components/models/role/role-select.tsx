@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Select, Spin } from 'antd';
 import type { SelectProps } from 'antd';
-import { api } from '@admin/src/utils/trpc';
-
+import { api } from "@nicestack/client"
 interface RoleSelectProps {
     value?: string | string[];
     onChange?: (value: string | string[]) => void;

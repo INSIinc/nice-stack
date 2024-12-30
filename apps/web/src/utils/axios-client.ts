@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { env } from '../env';
-const BASE_URL = env.API_URL; // Replace with your backend URL
+const BASE_URL = `http://${env.SERVER_IP}:3000`
 const apiClient = axios.create({
     baseURL: BASE_URL,
-    withCredentials: true,
+    // withCredentials: true,
 });
 // Add a request interceptor to attach the access token
 apiClient.interceptors.request.use(

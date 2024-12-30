@@ -2,161 +2,269 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
+// generator zod {
+//     provider                  = "zod-prisma-types"
+//     output                    = "../src/generated" // (default) the directory where generated zod schemas will be saved
+//     createModelTypes          = true
+//     createRelationValuesTypes = true
+//     writeNullishInModelTypes  = true
+//     createPartialTypes        = false
+//     useMultipleFiles          = false
+//     useTypeAssertions         = true
+// }
+
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 model Taxonomy {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  deletedAt DateTime?
-  terms     Term[]
-  order     Int
+    id         String    @id @default(uuid())
+    name       String    @unique
+    slug       String    @unique @map("slug")
+    deletedAt  DateTime? @map("deleted_at")
+    createdAt  DateTime  @default(now()) @map("created_at")
+    terms      Term[]
+    objectType String[]  @map("object_type")
+    order      Float?    @map("order")
 
-  @@index([order, deletedAt])
-}
-
-model Relation {
-  id           String    @id @default(uuid())
-  aId          String
-  bId          String
-  aType        String
-  bType        String
-  relationType String
-  createdAt    DateTime? @default(now())
-
-  @@unique([aId, bId, aType, bType, relationType])
-  @@map("relations")
+    @@index([order, deletedAt])
+    @@map("taxonomy")
 }
 
 model Term {
-  id          String         @id @default(uuid())
-  name        String
-  taxonomy    Taxonomy?      @relation(fields: [taxonomyId], references: [id])
-  taxonomyId  String?
-  order       Int
-  description String?
-  parentId    String?
-  parent      Term?          @relation("ChildParent", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Term[]         @relation("ChildParent")
-  ancestors   TermAncestry[] @relation("DescendantToAncestor")
-  descendants TermAncestry[] @relation("AncestorToDescendant")
+    id          String         @id @default(uuid())
+    name        String
+    taxonomy    Taxonomy?      @relation(fields: [taxonomyId], references: [id])
+    taxonomyId  String?        @map("taxonomy_id")
+    order       Float?         @map("order")
+    description String?
+    parentId    String?        @map("parent_id")
+    parent      Term?          @relation("ChildParent", fields: [parentId], references: [id], onDelete: Cascade)
+    children    Term[]         @relation("ChildParent")
+    ancestors   TermAncestry[] @relation("DescendantToAncestor")
+    descendants TermAncestry[] @relation("AncestorToDescendant")
+    domainId    String?        @map("domain_id")
+    domain      Department?    @relation("TermDom", fields: [domainId], references: [id])
+    createdAt   DateTime       @default(now()) @map("created_at")
+    updatedAt   DateTime       @updatedAt @map("updated_at")
+    deletedAt   DateTime?      @map("deleted_at")
+    createdBy   String?        @map("created_by")
+    depts       Department[]   @relation("department_term")
+    hasChildren Boolean?       @default(false) @map("has_children")
 
-  domainId     String?
-  domain       Department? @relation("TermDom", fields: [domainId], references: [id])
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  deletedAt    DateTime?
-  createdBy    String
-  createdStaff Staff?      @relation(fields: [staffId], references: [id])
-  staffId      String?
-
-  @@index([name]) // 对name字段建立索引，以加快基于name的查找速度
-  @@index([parentId]) // 对parentId字段建立索引，以加快基于parentId的查找速度
-  @@map("terms")
+    @@index([name]) // 对name字段建立索引，以加快基于name的查找速度
+    @@index([parentId]) // 对parentId字段建立索引，以加快基于parentId的查找速度
+    @@map("term")
 }
 
 model TermAncestry {
-  id           String    @id @default(uuid())
-  ancestorId   String
-  descendantId String
-  relDepth     Int
-  ancestor     Term      @relation("AncestorToDescendant", fields: [ancestorId], references: [id], onDelete: Cascade)
-  descendant   Term      @relation("DescendantToAncestor", fields: [descendantId], references: [id], onDelete: Cascade)
-  createdAt    DateTime? @default(now())
-}
+    id           String  @id @default(uuid())
+    ancestorId   String? @map("ancestor_id")
+    descendantId String  @map("descendant_id")
+    relDepth     Int     @map("rel_depth")
+    ancestor     Term?   @relation("AncestorToDescendant", fields: [ancestorId], references: [id])
+    descendant   Term    @relation("DescendantToAncestor", fields: [descendantId], references: [id])
 
-model Comment {
-  id           String    @id @default(uuid())
-  style        String
-  link         String?
-  title        String?
-  content      String
-  attachments  String[]  @default([])
-  createdAt    DateTime? @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
-  createdBy    String?
-  createdStaff Staff?    @relation(fields: [createdBy], references: [id])
-
-  @@map("comments")
+    // 索引建议
+    @@index([ancestorId]) // 针对祖先的查询
+    @@index([descendantId]) // 针对后代的查询
+    @@index([ancestorId, descendantId]) // 组合索引，用于查询特定的祖先-后代关系
+    @@index([relDepth]) // 根据关系深度的查询
+    @@map("term_ancestry")
 }
 
 model Staff {
-  id            String         @id @default(uuid())
-  showname      String?
-  username      String         @unique
-  password      String
-  phoneNumber   String?        @unique
-  domainId      String?
-  deptId        String?
-  domain        Department?    @relation("DomainStaff", fields: [domainId], references: [id])
-  department    Department?    @relation("DeptStaff", fields: [deptId], references: [id])
-  registerToken String?
-  order         Int
-  deletedAt     DateTime?
-  system        Boolean?       @default(false)
-  comments      Comment[]
-  terms         Term[]
-  refreshTokens RefreshToken[]
-}
+    id          String  @id @default(uuid())
+    showname    String? @map("showname")
+    username    String  @unique @map("username")
+    avatar      String? @map("avatar")
+    password    String? @map("password")
+    phoneNumber String? @unique @map("phone_number")
 
-model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  staffId   String
-  staff     Staff    @relation(fields: [staffId], references: [id])
-  createdAt DateTime @default(now())
+    domainId String? @map("domain_id")
+    deptId   String? @map("dept_id")
 
-  @@map("refreshTokens")
+    domain        Department? @relation("DomainStaff", fields: [domainId], references: [id])
+    department    Department? @relation("DeptStaff", fields: [deptId], references: [id])
+    registerToken String?     @map("register_token")
+    order         Float?
+
+    createdAt DateTime  @default(now()) @map("created_at")
+    updatedAt DateTime  @updatedAt @map("updated_at")
+    enabled   Boolean?  @default(true)
+    deletedAt DateTime? @map("deleted_at")
+    officerId String?   @map("officer_id")
+
+
+    watchedPost     Post[]    @relation("post_watch_staff")
+    visits          Visit[]
+    posts           Post[]
+    sentMsgs        Message[] @relation("message_sender")
+    receivedMsgs    Message[] @relation("message_receiver")
+
+
+
+    @@index([officerId])
+    @@index([deptId])
+    @@index([domainId])
+    @@index([username])
+    @@index([order])
+    @@map("staff")
 }
 
 model Department {
-  id           String         @id @default(uuid())
-  name         String
-  order        Int
-  ancestors    DeptAncestry[] @relation("DescendantToAncestor")
-  descendants  DeptAncestry[] @relation("AncestorToDescendant")
-  parentId     String?        @map("parentId")
-  parent       Department?    @relation("ChildParent", fields: [parentId], references: [id])
-  children     Department[]   @relation("ChildParent")
-  domainTerms  Term[]         @relation("TermDom")
-  deletedAt    DateTime?
-  isDomain     Boolean?       @default(false)
-  domainStaffs Staff[]        @relation("DomainStaff")
-  deptStaffs   Staff[]        @relation("DeptStaff")
+    id            String         @id @default(uuid())
+    name          String
+    order         Float?
+    ancestors     DeptAncestry[] @relation("DescendantToAncestor")
+    descendants   DeptAncestry[] @relation("AncestorToDescendant")
+    parentId      String?        @map("parent_id")
+    parent        Department?    @relation("ChildParent", fields: [parentId], references: [id])
+    children      Department[]   @relation("ChildParent")
+    domainId      String?        @map("domain_id")
+    domainTerms   Term[]         @relation("TermDom")
+    deletedAt     DateTime?      @map("deleted_at")
+    isDomain      Boolean?       @default(false) @map("is_domain")
+    domainStaffs  Staff[]        @relation("DomainStaff")
+    deptStaffs    Staff[]        @relation("DeptStaff")
+    terms         Term[]         @relation("department_term")
+
+    visits        Visit[]        @relation("visit_dept")
+    watchedPost   Post[]         @relation("post_watch_dept")
+    hasChildren   Boolean?       @default(false) @map("has_children")
+
+    @@index([parentId])
+    @@index([isDomain])
+    @@index([name])
+    @@index([order])
+    @@map("department")
 }
 
 model DeptAncestry {
-  ancestorId   String
-  descendantId String
-  relDepth     Int
-  ancestor     Department @relation("AncestorToDescendant", fields: [ancestorId], references: [id])
-  descendant   Department @relation("DescendantToAncestor", fields: [descendantId], references: [id])
+    id           String      @id @default(uuid())
+    ancestorId   String?     @map("ancestor_id")
+    descendantId String      @map("descendant_id")
+    relDepth     Int         @map("rel_depth")
+    ancestor     Department? @relation("AncestorToDescendant", fields: [ancestorId], references: [id])
+    descendant   Department  @relation("DescendantToAncestor", fields: [descendantId], references: [id])
 
-  @@id([descendantId, ancestorId])
-  @@index([ancestorId]) // 对ancestorId字段建立索引，以加快基于ancestorId的查找速度
-  @@index([descendantId]) // 对descendantId字段建立索引，以加快基于descendantId的查找速度
+    // 索引建议
+    @@index([ancestorId]) // 针对祖先的查询
+    @@index([descendantId]) // 针对后代的查询
+    @@index([ancestorId, descendantId]) // 组合索引，用于查询特定的祖先-后代关系
+    @@index([relDepth]) // 根据关系深度的查询
+    @@map("dept_ancestry")
 }
 
 model RoleMap {
-  id         String  @id @default(uuid())
-  objectId   String
-  roleId     String
-  domainId   String?
-  objectType String
-  role       Role    @relation(fields: [roleId], references: [id])
+    id         String  @id @default(uuid())
+    objectId   String  @map("object_id")
+    roleId     String  @map("role_id")
+    domainId   String? @map("domain_id")
+    objectType String  @map("object_type")
+    role       Role    @relation(fields: [roleId], references: [id])
+
+    @@index([domainId])
+    @@index([objectId])
+    @@map("rolemap")
 }
 
 model Role {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  permissions String[]  @default([])
-  roleMaps    RoleMap[]
-  deletedAt   DateTime?
-  system      Boolean?  @default(false)
+    id          String    @id @default(uuid())
+    name        String    @unique @map("name")
+    permissions String[]  @default([]) @map("permissions")
+    roleMaps    RoleMap[]
+    system      Boolean?  @default(false) @map("system")
+    createdAt   DateTime  @default(now()) @map("created_at")
+    updatedAt   DateTime  @updatedAt @map("updated_at")
+    deletedAt   DateTime? @map("deleted_at")
+
+    @@map("role")
+}
+
+model AppConfig {
+    id          String  @id @default(uuid())
+    slug        String  @unique
+    title       String?
+    description String?
+    meta        Json?
+
+    @@map("app_config")
+}
+
+model Post {
+    id          String       @id @default(uuid())
+    type        String?
+    title       String?
+    content     String?
+    author      Staff?       @relation(fields: [authorId], references: [id])
+    authorId    String?
+    domainId    String?
+    referenceId String?
+    attachments String[]     @default([])
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+    visits      Visit[]
+    watchStaffs Staff[]      @relation("post_watch_staff")
+    watchDepts  Department[] @relation("post_watch_dept")
+
+    parentId  String?
+    parent    Post?     @relation("PostChildren", fields: [parentId], references: [id])
+    children  Post[]    @relation("PostChildren")
+    deletedAt DateTime? @map("deleted_at")
+
+    // 复合索引
+    @@index([type, domainId]) // 类型和域组合查询
+    @@index([authorId, type]) // 作者和类型组合查询
+    @@index([referenceId, type]) // 引用ID和类型组合查询
+    @@index([parentId, type]) // 父级帖子和创建时间索引
+    // 时间相关索引
+    @@index([createdAt]) // 按创建时间倒序索引
+    @@index([updatedAt]) // 按更新时间倒序索引
+}
+
+model Message {
+    id          String    @id @default(uuid())
+    url         String?
+    intent      String?
+    option      Json?
+    senderId    String?   @map("sender_id")
+    messageType String?
+    sender      Staff?    @relation(name: "message_sender", fields: [senderId], references: [id])
+    title       String?
+    content     String?
+    receivers   Staff[]   @relation("message_receiver")
+    visits      Visit[]
+    createdAt   DateTime  @default(now()) @map("created_at")
+    updatedAt   DateTime? @updatedAt @map("updated_at")
+
+    @@index([messageType, createdAt])
+    @@map("message")
+}
+
+model Visit {
+    id        String    @id @default(uuid())
+    postId    String?   @map("post_id")
+    troubleId String?   @map("trouble_id")
+    messageId String?   @map("message_id")
+    visitorId String    @map("visitor_id")
+    visitor   Staff     @relation(fields: [visitorId], references: [id])
+    deptId         String?      @map("dept_id")
+    department     Department?  @relation(name: "visit_dept", fields: [deptId], references: [id])
+    createdAt DateTime? @default(now()) @map("created_at")
+    updatedAt DateTime? @updatedAt @map("updated_at")
+    sourceIP  String?   @map("source_ip")
+    visitType String?   @map("visit_type")
+    post      Post?     @relation(fields: [postId], references: [id])
+    message   Message?  @relation(fields: [messageId], references: [id])
+    views     Int       @default(1)
+
+    @@index([postId, visitType, visitorId])
+    @@index([troubleId, visitType, visitorId])
+    @@index([messageId, visitType, visitorId])
+    @@map("visit")
 }

@@ -1,144 +1,178 @@
-import { Button, TreeSelect, TreeSelectProps } from "antd";
-import { useEffect, useState } from "react";
-import { DataNode, findNodeByKey } from "@nicestack/common";
-import { useDepartment } from "@web/src/hooks/useDepartment";
-import { api } from "@web/src/utils/trpc";
+import { TreeSelect, TreeSelectProps } from "antd";
+import React, { useEffect, useState, useCallback } from "react";
+import { getUniqueItems } from "@nicestack/common";
+import { api } from "@nicestack/client"
+import { DefaultOptionType } from "antd/es/select";
 
 interface DepartmentSelectProps {
 	defaultValue?: string | string[];
 	value?: string | string[];
 	onChange?: (value: string | string[]) => void;
-	width?: number | string;
 	placeholder?: string;
 	multiple?: boolean;
 	rootId?: string;
-	extraOptions?: { value: string | undefined; label: string }[];
+	domain?: boolean;
+	disabled?: boolean;
+	className?: string;
 }
 
 export default function DepartmentSelect({
 	defaultValue,
 	value,
 	onChange,
-	width = "100%",
+	className,
 	placeholder = "选择单位",
 	multiple = false,
-	rootId,
+	rootId = null,
+	disabled = false,
+	domain = undefined,
 }: DepartmentSelectProps) {
-	const { treeData, addFetchParentId } = useDepartment();
-	api.useQueries((t) => {
-		if (Array.isArray(defaultValue)) {
-			return defaultValue?.map((id) =>
-				t.department.getDepartmentDetails({ deptId: id })
-			);
-		} else {
-			return [];
-		}
-	});
-	const [filteredTreeData, setFilteredTreeData] = useState<DataNode[]>([]);
-	const [selectedValue, setSelectedValue] = useState(() => {
-		if (value) {
-			if (Array.isArray(value)) {
-				return value.map((item) => ({
-					label: item,
-					value: item,
-				}));
-			} else {
-				return { label: value, value: value };
-			}
-		}
-		return undefined; // 如果没有提供defaultValue，返回null或者合适的初始值
-	});
+	const utils = api.useUtils();
+	const [listTreeData, setListTreeData] = useState<
+		Omit<DefaultOptionType, "label">[]
+	>([]);
 
-	const findNodeByKey = (data: DataNode[], key: string): DataNode | null => {
-		for (let node of data) {
-			if (node.key === key) return node;
-			if (node.children) {
-				const found = findNodeByKey(node.children, key);
-				if (found) return found;
-			}
-		}
-		return null;
-	};
-
-	useEffect(() => {
-		if (rootId && treeData.length > 0) {
-			const rootNode = findNodeByKey(treeData, rootId);
-			if (rootNode) {
-				setFilteredTreeData([rootNode]);
-			} else {
-				setFilteredTreeData([]);
-			}
-		} else {
-			setFilteredTreeData(treeData);
-		}
-	}, [rootId, treeData]);
-
-	useEffect(() => {
-		if (rootId) {
-			setSelectedValue(undefined);
-			addFetchParentId(rootId);
-		}
-	}, [rootId]);
-
-	useEffect(() => {
-		if (defaultValue) {
-			if (Array.isArray(defaultValue)) {
-				setSelectedValue(
-					defaultValue.map((item) => ({ label: item, value: item }))
+	const fetchParentDepts = useCallback(
+		async (deptIds: string | string[], rootId?: string) => {
+			const idsArray = Array.isArray(deptIds) ? deptIds : [deptIds];
+			try {
+				return await utils.department.getParentSimpleTree.fetch({
+					deptIds: idsArray,
+					rootId,
+					domain,
+				});
+			} catch (error) {
+				console.error(
+					"Error fetching parent departments for deptIds",
+					idsArray,
+					":",
+					error
 				);
-			} else {
-				setSelectedValue({ label: defaultValue, value: defaultValue });
+				throw error;
 			}
-		}
-		if (value) {
-			if (Array.isArray(value)) {
-				setSelectedValue(
-					value.map((item) => ({ label: item, value: item }))
+		},
+		[utils]
+	);
+
+	const fetchDepts = useCallback(async () => {
+		try {
+			const rootDepts =
+				await utils.department.getChildSimpleTree.fetch({
+					deptIds: [rootId],
+					domain,
+				});
+			let combinedDepts = [...rootDepts];
+			if (defaultValue) {
+				const defaultDepts = await fetchParentDepts(defaultValue, rootId);
+				combinedDepts = getUniqueItems(
+					[...listTreeData, ...combinedDepts, ...defaultDepts],
+					"id"
 				);
-			} else {
-				setSelectedValue({ label: value, value: value });
 			}
+			if (value) {
+				const valueDepts = await fetchParentDepts(value, rootId);
+				combinedDepts = getUniqueItems(
+					[...listTreeData, ...combinedDepts, ...valueDepts],
+					"id"
+				);
+			}
+
+			setListTreeData(combinedDepts);
+		} catch (error) {
+			console.error("Error fetching departments:", error);
 		}
-	}, [defaultValue, value]);
+	}, [defaultValue, value, rootId, utils, fetchParentDepts]);
+
+	useEffect(() => {
+		fetchDepts();
+	}, [defaultValue, value, rootId, fetchDepts]);
 
 	const handleChange = (newValue: any) => {
-		setSelectedValue(newValue);
 		if (onChange) {
-			if (multiple && Array.isArray(newValue)) {
-				onChange(newValue.map((item) => item.value));
-			} else {
-				onChange(newValue);
-			}
+			const processedValue =
+				multiple && Array.isArray(newValue)
+					? newValue.map((item) => item.value)
+					: newValue;
+			onChange(processedValue);
 		}
 	};
 
 	const onLoadData: TreeSelectProps["loadData"] = async ({ id }) => {
-		addFetchParentId(id);
+		try {
+			const result = await utils.department.getChildSimpleTree.fetch({
+				deptIds: [id],
+				domain,
+			});
+			const newItems = getUniqueItems([...listTreeData, ...result], "id");
+			setListTreeData(newItems);
+		} catch (error) {
+			console.error(
+				"Error loading data for node with id",
+				id,
+				":",
+				error
+			);
+		}
 	};
 
-	const handleExpand = (expandedKeys: React.Key[]) => {
-		(expandedKeys as string[]).forEach((id: string) =>
-			addFetchParentId(id)
-		);
+	const handleExpand = async (keys: React.Key[]) => {
+		// console.log(keys);
+		try {
+			const allKeyIds =
+				keys.map((key) => key.toString()).filter(Boolean) || [];
+			// const expandedNodes = await Promise.all(
+			// 	keys.map(async (key) => {
+			// 		return await utils.department.getChildSimpleTree.fetch({
+			// 			deptId: key.toString(),
+			// 			domain,
+			// 		});
+			// 	})
+			// );
+			//
+			//上面那样一个个拉会拉爆，必须直接拉deptIds
+			const expandedNodes =
+				await utils.department.getChildSimpleTree.fetch({
+					deptIds: allKeyIds,
+					domain,
+				});
+			const flattenedNodes = expandedNodes.flat();
+			const newItems = getUniqueItems(
+				[...listTreeData, ...flattenedNodes],
+				"id"
+			);
+			setListTreeData(newItems);
+		} catch (error) {
+			console.error("Error expanding nodes with keys", keys, ":", error);
+		}
+	};
+
+	const handleDropdownVisibleChange = async (open: boolean) => {
+		if (open) {
+			// This will attempt to expand all nodes and fetch their children when the dropdown opens
+			const allKeys = listTreeData.map((item) => item.id);
+			await handleExpand(allKeys);
+		}
 	};
 
 	return (
-		<>
-			<TreeSelect
-
-				allowClear
-				value={selectedValue}
-				style={{ minWidth: 200, width }}
-				placeholder={placeholder}
-				onChange={handleChange}
-				loadData={onLoadData}
-				treeData={filteredTreeData}
-				treeCheckable={multiple}
-				showCheckedStrategy={TreeSelect.SHOW_ALL}
-				treeCheckStrictly={multiple}
-				onClear={() => handleChange(multiple ? [] : undefined)}
-				onTreeExpand={handleExpand}
-			/>
-		</>
+		<TreeSelect
+			treeDataSimpleMode
+			disabled={disabled}
+			showSearch
+			allowClear
+			defaultValue={defaultValue}
+			value={value}
+			className={className}
+			placeholder={placeholder}
+			onChange={handleChange}
+			loadData={onLoadData}
+			treeData={listTreeData}
+			treeCheckable={multiple}
+			showCheckedStrategy={TreeSelect.SHOW_ALL}
+			treeCheckStrictly={multiple}
+			onClear={() => handleChange(multiple ? [] : undefined)}
+			onTreeExpand={handleExpand}
+			onDropdownVisibleChange={handleDropdownVisibleChange}
+		/>
 	);
 }

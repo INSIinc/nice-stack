@@ -2,7 +2,7 @@ import { Button, Drawer, Form } from "antd";
 import React, { useRef, useState } from "react";
 import type { ButtonProps, FormInstance } from "antd";
 import { Department } from "@nicestack/common";
-import { ExcelImporter } from "../../utilities/excel-importer";
+import { ExcelImporter } from "../../utils/excel-importer";
 import DepartmentSelect from "./department-select";
 
 

@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "incremental": true,
+        "skipLibCheck": true,
+        "strictNullChecks": true,
+        "strictBindCallApply": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": false, // 关闭未使用局部变量的警告
+        "noUnusedParameters": false, // 关闭未使用函数参数的警告
+        "strict": true,
+        "removeComments": true,
+        "noImplicitAny": false,
+        "strictPropertyInitialization": false,
+        "paths": {
+            "@server/*": [
+                "./apps/server/src/*"
+            ],
+            "@web/*": [
+                "apps/web/*"
+            ],
+        }
+    }
+}

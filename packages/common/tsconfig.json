@@ -1,0 +1,39 @@
+{
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "esnext",
+        "lib": [
+            "es2022"
+        ],
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "removeComments": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noImplicitReturns": false,
+        "noFallthroughCasesInSwitch": false,
+        "noUncheckedIndexedAccess": false,
+        "noImplicitOverride": false,
+        "noPropertyAccessFromIndexSignature": false,
+        "emitDeclarationOnly": true,
+        "outDir": "dist",
+        "incremental": true,
+        "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo"
+    },
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/__tests__"
+    ]
+}

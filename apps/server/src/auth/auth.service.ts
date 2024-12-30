@@ -2,170 +2,187 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  NotFoundException,
+  Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { StaffService } from '../models/staff/staff.service';
+import {
+  db,
+  AuthSchema,
+  JwtPayload,
+} from '@nicestack/common';
+import * as argon2 from 'argon2';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { AuthSchema, db, z } from '@nicestack/common';
-import { StaffService } from '@server/models/staff/staff.service';
-import { JwtPayload } from '@nicestack/common';
-import { RoleMapService } from '@server/rbac/rolemap.service';
+import { redis } from '@server/utils/redis/redis.service';
+import { UserProfileService } from './utils';
+import { SessionInfo, SessionService } from './session.service';
+import { tokenConfig } from './config';
+import { z } from 'zod';
 
 @Injectable()
 export class AuthService {
+  private logger = new Logger(AuthService.name)
   constructor(
-    private readonly jwtService: JwtService,
     private readonly staffService: StaffService,
-    private readonly roleMapService: RoleMapService
+    private readonly jwtService: JwtService,
+    private readonly sessionService: SessionService,
   ) { }
 
-  async signIn(data: z.infer<typeof AuthSchema.signInRequset>) {
+  private async generateTokens(payload: JwtPayload): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  }> {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        expiresIn: `${tokenConfig.accessToken.expirationMs / 1000}s`,
+      }),
+      this.jwtService.signAsync(
+        { sub: payload.sub },
+        { expiresIn: `${tokenConfig.refreshToken.expirationMs / 1000}s` },
+      ),
+    ]);
+
+    return { accessToken, refreshToken };
+  }
+
+  async signIn(data: z.infer<typeof AuthSchema.signInRequset>): Promise<SessionInfo> {
     const { username, password, phoneNumber } = data;
-    // Find the staff by either username or phoneNumber
-    const staff = await db.staff.findFirst({
-      where: {
-        OR: [
-          { username },
-          { phoneNumber }
-        ]
-      }
+
+    let staff = await db.staff.findFirst({
+      where: { OR: [{ username }, { phoneNumber }], deletedAt: null },
     });
 
-    if (!staff) {
-      throw new UnauthorizedException('Invalid username/phone number or password');
+    if (!staff && phoneNumber) {
+      staff = await this.signUp({
+        showname: '新用户',
+        username: phoneNumber,
+        phoneNumber,
+        password: phoneNumber,
+      });
+    } else if (!staff) {
+      throw new UnauthorizedException('帐号不存在');
     }
-
-    const isPasswordMatch = await bcrypt.compare(password, staff.password);
+    if (!staff.enabled) {
+      throw new UnauthorizedException('帐号已禁用');
+    }
+    const isPasswordMatch = phoneNumber || await argon2.verify(staff.password, password);
     if (!isPasswordMatch) {
-      throw new UnauthorizedException('Invalid username/phone number or password');
+      throw new UnauthorizedException('帐号或密码错误');
     }
 
-    const payload: JwtPayload = { sub: staff.id, username: staff.username };
-    const accessToken = await this.jwtService.signAsync(payload, { expiresIn: '1h' });
-    const refreshToken = await this.generateRefreshToken(staff.id);
+    try {
+      const payload = { sub: staff.id, username: staff.username };
+      const { accessToken, refreshToken } = await this.generateTokens(payload);
 
-    // Calculate expiration dates
-    const accessTokenExpiresAt = new Date();
-    accessTokenExpiresAt.setHours(accessTokenExpiresAt.getHours() + 1);
+      return await this.sessionService.createSession(
+        staff.id,
+        accessToken,
+        refreshToken,
+        {
+          accessTokenExpirationMs: tokenConfig.accessToken.expirationMs,
+          refreshTokenExpirationMs: tokenConfig.refreshToken.expirationMs,
+          sessionTTL: tokenConfig.accessToken.expirationTTL,
+        },
+      );
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException('创建会话失败');
+    }
+  }
+  async signUp(data: z.infer<typeof AuthSchema.signUpRequest>) {
+    const { username, phoneNumber, officerId } = data;
 
-    const refreshTokenExpiresAt = new Date();
-    refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 7);
-
-    // Store the refresh token in the database
-    await db.refreshToken.create({
-      data: {
-        staffId: staff.id,
-        token: refreshToken,
+    const existingUser = await db.staff.findFirst({
+      where: {
+        OR: [{ username }, { officerId }, { phoneNumber }],
+        deletedAt: null
       },
     });
 
-    return {
-      access_token: accessToken,
-      access_token_expires_at: accessTokenExpiresAt,
-      refresh_token: refreshToken,
-      refresh_token_expires_at: refreshTokenExpiresAt,
-    };
-  }
+    if (existingUser) {
+      throw new BadRequestException('帐号或证件号已存在');
+    }
 
-  async generateRefreshToken(userId: string): Promise<string> {
-    const payload = { sub: userId };
-    return this.jwtService.signAsync(payload, { expiresIn: '7d' }); // Set an appropriate expiration
+    return this.staffService.create({
+      data: {
+        ...data,
+        domainId: data.deptId,
+      }
+    });
   }
-
   async refreshToken(data: z.infer<typeof AuthSchema.refreshTokenRequest>) {
-    const { refreshToken } = data;
+    const { refreshToken, sessionId } = data;
 
     let payload: JwtPayload;
     try {
       payload = this.jwtService.verify(refreshToken);
-    } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
+    } catch {
+      throw new UnauthorizedException('用户会话已过期');
     }
 
-    const storedToken = await db.refreshToken.findUnique({ where: { token: refreshToken } });
-    if (!storedToken) {
-      throw new UnauthorizedException('Invalid refresh token');
+    const session = await this.sessionService.getSession(payload.sub, sessionId);
+    if (!session || session.refresh_token !== refreshToken) {
+      throw new UnauthorizedException('用户会话已过期');
     }
 
-    const user = await db.staff.findUnique({ where: { id: payload.sub } });
+    const user = await db.staff.findUnique({ where: { id: payload.sub, deletedAt: null } });
     if (!user) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('用户不存在');
     }
 
-    const newAccessToken = await this.jwtService.signAsync(
-      { sub: user.id, username: user.username },
-      { expiresIn: '1h' },
+    const { accessToken } = await this.generateTokens({
+      sub: user.id,
+      username: user.username,
+    });
+
+    const updatedSession = {
+      ...session,
+      access_token: accessToken,
+      access_token_expires_at: Date.now() + tokenConfig.accessToken.expirationMs,
+    };
+    await this.sessionService.saveSession(
+      payload.sub,
+      updatedSession,
+      tokenConfig.accessToken.expirationTTL,
     );
-
-    // Calculate new expiration date
-    const accessTokenExpiresAt = new Date();
-    accessTokenExpiresAt.setHours(accessTokenExpiresAt.getHours() + 1);
-
+    await redis.del(UserProfileService.instance.getProfileCacheKey(payload.sub));
     return {
-      access_token: newAccessToken,
-      access_token_expires_at: accessTokenExpiresAt,
+      access_token: accessToken,
+      access_token_expires_at: updatedSession.access_token_expires_at,
     };
   }
-
-  async signUp(data: z.infer<typeof AuthSchema.signUpRequest>) {
-    const { username, password, phoneNumber } = data;
-
-    const existingUserByUsername = await db.staff.findUnique({ where: { username } });
-    if (existingUserByUsername) {
-      throw new BadRequestException('Username is already taken');
-    }
-    if (phoneNumber) {
-      const existingUserByPhoneNumber = await db.staff.findUnique({ where: { phoneNumber } });
-      if (existingUserByPhoneNumber) {
-        throw new BadRequestException('Phone number is already taken');
-      }
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const staff = await this.staffService.create({
-      username,
-      phoneNumber,
-      password: hashedPassword,
-    });
-
-    return staff;
-  }
-  async logout(data: z.infer<typeof AuthSchema.logoutRequest>) {
-    const { refreshToken } = data;
-    await db.refreshToken.deleteMany({ where: { token: refreshToken } });
-    return { message: 'Logout successful' };
-  }
-
   async changePassword(data: z.infer<typeof AuthSchema.changePassword>) {
-    const { oldPassword, newPassword, username } = data;
-    const user = await db.staff.findUnique({ where: { username } });
+    const { newPassword, phoneNumber, username } = data;
+    const user = await db.staff.findFirst({
+      where: { OR: [{ username }, { phoneNumber }], deletedAt: null },
+    });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new UnauthorizedException('用户不存在');
     }
-
-    const isPasswordMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isPasswordMatch) {
-      throw new UnauthorizedException('Old password is incorrect');
-    }
-
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    await this.staffService.update({ id: user.id, password: hashedNewPassword });
-
-    return { message: 'Password successfully changed' };
-  }
-  async getUserProfile(data: JwtPayload) {
-    const { sub } = data
-    const staff = await db.staff.findUnique({
-      where: { id: sub }, include: {
-        department: true,
-        domain: true
+    await this.staffService.update({
+      where: { id: user?.id },
+      data: {
+        password: newPassword,
       }
-    })
-    const staffPerms = await this.roleMapService.getPermsForObject({
-      domainId: staff.domainId,
-      staffId: staff.id,
-      deptId: staff.deptId,
     });
-    return { ...staff, permissions: staffPerms }
+
+    return { message: '密码已修改' };
   }
+  async logout(data: z.infer<typeof AuthSchema.logoutRequest>) {
+    const { refreshToken, sessionId } = data;
+
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+      await Promise.all([
+        this.sessionService.deleteSession(payload.sub, sessionId),
+        redis.del(UserProfileService.instance.getProfileCacheKey(payload.sub)),
+      ]);
+    } catch {
+      throw new UnauthorizedException('无效的会话');
+    }
+
+    return { message: '注销成功' };
+  }
+
 }

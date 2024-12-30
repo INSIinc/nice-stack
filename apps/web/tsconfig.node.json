@@ -6,6 +6,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
+    "noUnusedLocals": false, // 关闭未使用局部变量的警告
+    "noUnusedParameters": false, // 关闭未使用函数参数的警告
     "strict": true,
     "noEmit": true
   },

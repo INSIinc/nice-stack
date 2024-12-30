@@ -1,211 +1,110 @@
-import React, { useEffect, useState } from "react";
-import { Button, Empty, Tree } from "antd";
-
-import {
-	BranchesOutlined,
-	DownOutlined,
-	NodeIndexOutlined,
-	PlusOutlined,
-} from "@ant-design/icons";
-import { DataNode } from "@nicestack/common";
-import { useDepartment } from "@web/src/hooks/useDepartment";
-import DepartmentDrawer from "./department-drawer";
-import DepartmentImportDrawer from "./department-import-drawer";
+import React, { useMemo, useContext, useCallback, useState } from "react";
+import { ObjectType } from "@nicestack/common"
+import { ICellRendererParams, SortDirection } from "ag-grid-community";
+import { ColDef } from "@ag-grid-community/core";
+import AgServerTable from "../../presentation/ag-server-table";
+import { DeleteOutlined, EditFilled, EllipsisOutlined, PlusOutlined } from "@ant-design/icons";
+import { Menu, MenuItem } from "../../presentation/dropdown-menu";
+import { DeptEditorContext } from "./dept-editor";
+import { CustomCellRendererProps } from "ag-grid-react";
+import { message, Tag } from "antd";
+import { CrudOperation, emitDataChange, useDepartment } from "@nicestack/client";
 
 export default function DepartmentList() {
-	const [customTreeData, setCustomTreeData] = useState<DataNode[]>([]);
-	const { treeData, addFetchParentId, update, deleteDepartment } =
-		useDepartment();
-
-	useEffect(() => {
-		if (treeData) {
-			const processedTreeData = processTreeData(treeData);
-			setCustomTreeData(processedTreeData);
-		}
-	}, [treeData]);
-
-	const renderTitle = (node: DataNode) => (
-		<div className="flex items-center justify-between w-full">
-			<span
-				className={`font-semibold mr-2 ${node.data.isDomain ? "text-blue-500" : ""}`}>
-				{node.data.isDomain && <BranchesOutlined className="mr-2" />}
-				{node.title}
-			</span>
-			<div className="flex items-center gap-2">
-				<DepartmentImportDrawer
-					title="导入子节点"
-					type="primary"
-					size="small"
-					parentId={node.data.id}
-					ghost></DepartmentImportDrawer>
-
-				<DepartmentDrawer
-					ghost
-					type="primary"
-					size="small"
-					icon={<PlusOutlined />}
-					title="子节点"
-					parentId={node.key}
-				/>
-				<DepartmentDrawer data={node.data} title="编辑" size="small" />
-
-				<Button
-					size="small"
-					danger
-					onClick={async () => {
-						await deleteDepartment.mutateAsync({
-							id: node.data.id,
-						});
-					}}>
-					删除
-				</Button>
-			</div>
-		</div>
-	);
-
-	const processTreeData = (nodes: DataNode[]): DataNode[] => {
-		return nodes.map((node) => ({
-			...node,
-			title: renderTitle(node),
-			children:
-				node.children && node.children.length > 0
-					? processTreeData(node.children)
-					: [],
-		}));
-	};
-
-	const onLoadData = async ({ key }: any) => {
-		console.log(key);
-		addFetchParentId(key);
-	};
-
-	const onExpand = (
-		expandedKeys: React.Key[],
-		{ expanded, node }: { expanded: boolean; node: any }
-	) => {
-		if (expanded) {
-			addFetchParentId(node.key);
-		}
-	};
-
-	const onDrop = async (info: any) => {
-		console.log(info);
-
-		const dropKey = info.node.key;
-		const dragKey = info.dragNode.key;
-
-		const dropPos = info.node.pos.split("-");
-		const dropPosition =
-			info.dropPosition - Number(dropPos[dropPos.length - 1]);
-		console.log(dropPosition);
-
-		const loop = (
-			data: DataNode[],
-			key: React.Key,
-			callback: (node: DataNode, i: number, data: DataNode[]) => void
-		) => {
-			for (let i = 0; i < data.length; i++) {
-				if (data[i].key === key) {
-					return callback(data[i], i, data);
-				}
-				if (data[i].children) {
-					loop(data[i].children!, key, callback);
-				}
-			}
+	const { setEditId, setModalOpen, setParentId } = useContext(DeptEditorContext);
+	// 将 params 转换为 state
+	const [params, setParams] = useState({ parentId: null });
+	const { softDeleteByIds } = useDepartment()
+	const OpreationRenderer = ({ props }: { props: ICellRendererParams }) => {
+		const handleEdit = () => {
+			setEditId(props?.data?.id);
+			setModalOpen(true);
 		};
-
-		const data = [...customTreeData];
-		let dragObj: DataNode | undefined;
-		loop(data, dragKey, (item, index, arr) => {
-			arr.splice(index, 1);
-			dragObj = item;
-		});
-
-		let parentNodeId: any = null;
-		let siblings: DataNode[] = [];
-
-		if (!info.dropToGap) {
-			loop(data, dropKey, (item) => {
-				item.children = item.children || [];
-				item.children.unshift(dragObj!);
-				parentNodeId = item.key;
-				siblings = item.children;
-			});
-		} else if (
-			(info.node.children || []).length > 0 &&
-			info.node.expanded &&
-			dropPosition === 1
-		) {
-			loop(data, dropKey, (item) => {
-				item.children = item.children || [];
-				item.children.unshift(dragObj!);
-				parentNodeId = item.key;
-				siblings = item.children;
-			});
-		} else {
-			let ar: DataNode[] = [];
-			let i: number = 0;
-			loop(data, dropKey, (item, index, arr) => {
-				ar = arr;
-				i = index;
-			});
-
-			if (dropPosition === -1) {
-				ar.splice(i, 0, dragObj!);
-			} else {
-				ar.splice(i + 1, 0, dragObj!);
-			}
-
-			parentNodeId = ar[0].data.parentId || null;
-			siblings = ar;
+		const handleCreate = () => {
+			setParentId(props.data?.id)
+			setModalOpen(true);
 		}
-
-		setCustomTreeData(data);
-
-		const { id } = dragObj!.data;
-		console.log(JSON.parse(JSON.stringify(siblings)));
-
-		const updatePromises = siblings.map((sibling, idx) => {
-			return update.mutateAsync({
-				id: sibling.data.id,
-				order: idx,
-				parentId: parentNodeId,
-			});
-		});
-
-		await Promise.all(updatePromises);
-		console.log(
-			`Updated node ${id} and its siblings with new order and parentId ${parentNodeId}`
+		return (
+			<div>
+				<Menu
+					node={
+						<EllipsisOutlined className=" hover:bg-textHover p-1 rounded" />
+					}>
+					<MenuItem
+						label="添加子节点"
+						icon={<PlusOutlined></PlusOutlined>}
+						onClick={handleCreate}
+					/>
+					<MenuItem
+						label="编辑"
+						icon={<EditFilled />}
+						onClick={handleEdit}
+					/>
+					<MenuItem
+						label="移除"
+						onClick={() => {
+							softDeleteByIds.mutateAsync({
+								ids: [props?.data?.id],
+							}, {
+								onSettled: () => {
+									message.success("删除成功");
+									emitDataChange(ObjectType.DEPARTMENT, props.data as any, CrudOperation.DELETED)
+								},
+							});
+						}}
+						icon={<DeleteOutlined></DeleteOutlined>}></MenuItem>
+				</Menu>
+			</div>
 		);
 	};
 
-	const onDragEnter = () => { };
+	const columnDefs = useMemo<ColDef[]>(() => {
+		return [
+			{
+				headerName: "是否为域",
+				field: "is_domain",
+				cellRenderer: (props: CustomCellRendererProps) => {
+					return <Tag color={props.value ? "cyan" : "blue"}>
+						{props.value ? '域节点' : '普通节点'}
+					</Tag>
+				}
+			},
+			{
+				field: "order",
+				hide: true,
+				sort: "asc" as SortDirection
+			},
+			{
+				headerName: "操作",
+				sortable: true,
+				cellRenderer: (props: CustomCellRendererProps) => (
+					<OpreationRenderer props={props} />
+				),
+				maxWidth: 80,
+			},
+		].filter(Boolean);
+	}, []);
+
+	const autoGroupColumnDef = useMemo(() => ({
+		rowDrag: true,
+		headerName: "单位名",
+		field: "name",
+		filter: "agTextColumnFilter",
+	}), []);
+
+	const getServerSideGroupKey = useCallback((item) => item.id, []);
+	const isServerSideGroup = useCallback((item) => item.has_children, []);
 
 	return (
-		<div className="flex flex-col gap-4 flex-grow">
-			<div className="flex items-center gap-4">
-				<DepartmentDrawer title="新建单位" type="primary" />
-				<DepartmentImportDrawer
-					ghost
-					title="导入单位"
-					type="primary"></DepartmentImportDrawer>
-			</div>
-			{customTreeData.length > 0 ? (
-				<Tree
-					style={{ minWidth: 400 }}
-					loadData={onLoadData}
-					treeData={customTreeData}
-					draggable
-					blockNode
-					onDragEnter={onDragEnter}
-					onDrop={onDrop}
-					showLine={{ showLeafIcon: false }}
-					switcherIcon={<DownOutlined />}
-					onExpand={onExpand}
-				/>
-			) : (
-				<Empty></Empty>
-			)}
-		</div>
+		<AgServerTable
+			height={"calc(100vh - 48px - 49px)"}
+			columnDefs={columnDefs}
+			objectType={ObjectType.DEPARTMENT}
+			treeData={true}
+			params={params}  // 使用 state 中的 params
+			getServerSideGroupKey={getServerSideGroupKey}
+			isServerSideGroup={isServerSideGroup}
+			autoGroupColumnDef={autoGroupColumnDef}
+		/>
 	);
 }

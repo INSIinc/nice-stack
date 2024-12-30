@@ -1,93 +1,178 @@
-import { Button, Form, Input, message } from "antd";
-import { FormInstance } from "antd";
-import { useEffect, useRef, useState } from "react";
-import { Staff } from "@nicestack/common"; // Adjust the import path if necessary
-import DomainSelect from "../domain/domain-select";
-import { useStaff } from "@web/src/hooks/useStaff";
+import { Button, Form, Input, Spin, Switch, message } from "antd";
+import { useContext, useEffect} from "react";
+import { useStaff } from "@nicestack/client";
 import DepartmentSelect from "../department/department-select";
-
-export default function StaffForm({
-    data,
-    deptId,
-    domainId
-}: {
-    data?: Partial<Staff>;
-    deptId: string;
-    parentId?: string;
-    domainId?: string
-}) {
-    const { create, update } = useStaff(); // Ensure you have these methods in your hooks
-    const [loading, setLoading] = useState(false);
-    const [selectedDomainId, setSelectedDomainId] = useState(domainId);
-    const formRef = useRef<FormInstance>(null);
-
-    useEffect(() => {
-
-        if (deptId) formRef.current?.setFieldValue("deptId", deptId);
-    }, [deptId]);
-
-    useEffect(() => {
-        if (domainId) {
-            formRef.current?.setFieldValue("domainId", domainId);
-            setSelectedDomainId(domainId)
-        }
-    }, [domainId]);
-
-    return (
-        <Form
-            initialValues={data}
-            ref={formRef}
-            layout="vertical"
-            requiredMark="optional"
-            onFinish={async (values) => {
-                console.log("Received values:", values);
-                setLoading(true);
-                if (data) {
-                    try {
-                        await update.mutateAsync({ id: data.id, ...values });
-                    } catch (err) {
-                        message.error("更新失败");
-                    }
-                } else {
-                    try {
-                        await create.mutateAsync(values);
-                        formRef.current?.resetFields();
-                        if (deptId)
-                            formRef.current?.setFieldValue("deptId", deptId);
-                        if (domainId)
-                            formRef.current?.setFieldValue("domainId", domainId);
-                    } catch (err) {
-                        message.error("创建失败");
-                    }
-                }
-                setLoading(false);
-            }}
-        >
-            <Form.Item rules={[{ required: true }]} name={"phoneNumber"} label="手机号">
-                <Input />
-            </Form.Item>
-            <Form.Item rules={[{ required: true }]} name={"name"} label="名称">
-                <Input />
-            </Form.Item>
-
-            <Form.Item name={'domainId'} label='所属域'>
-                <DomainSelect
-                    onChange={(value) => {
-                        setSelectedDomainId(value);
-                        formRef.current?.setFieldValue('domainId', value);
-                    }}
-                />
-            </Form.Item>
-
-            <Form.Item name={'deptId'} label='所属单位'>
-                <DepartmentSelect rootId={selectedDomainId} />
-            </Form.Item>
-
-            <div className="flex justify-center items-center p-2">
-                <Button loading={loading} htmlType="submit" type="primary">
-                    提交
-                </Button>
-            </div>
-        </Form>
-    );
+import { api } from "@nicestack/client"
+import { StaffEditorContext } from "./staff-editor";
+import { useAuth } from "@web/src/providers/auth-provider";
+export default function StaffForm() {
+	const { create, update } = useStaff(); // Ensure you have these methods in your hooks
+	const {
+		domainId,
+		form,
+		editId,
+		setModalOpen,
+		formLoading,
+		setFormLoading,
+		canManageAnyStaff,
+		setEditId,
+	} = useContext(StaffEditorContext);
+	const { data, isLoading } = api.staff.findFirst.useQuery(
+		{ where: { id: editId } },
+		{ enabled: !!editId }
+	);
+	const { isRoot } = useAuth();
+	async function handleFinish(values: any) {
+		const {
+			username,
+			showname,
+			deptId,
+			domainId: fieldDomainId,
+			password,
+			phoneNumber,
+			officerId,
+			enabled
+		} = values
+		setFormLoading(true);
+		try {
+			if (data && editId) {
+				await update.mutateAsync({
+					where: { id: data.id },
+					data: {
+						username,
+						deptId,
+						showname,
+						domainId: fieldDomainId ? fieldDomainId : domainId,
+						password,
+						phoneNumber,
+						officerId,
+						enabled
+					}
+				});
+			} else {
+				await create.mutateAsync({
+					data: {
+						username,
+						deptId,
+						showname,
+						domainId: fieldDomainId ? fieldDomainId : domainId,
+						password,
+						officerId,
+						phoneNumber
+					}
+				});
+				form.resetFields();
+				if (deptId) form.setFieldValue("deptId", deptId);
+				if (domainId) form.setFieldValue("domainId", domainId);
+			}
+			message.success("提交成功");
+			setModalOpen(false);
+		} catch (err: any) {
+			message.error(err.message);
+		} finally {
+			setFormLoading(false);
+			setEditId(undefined);
+		}
+	}
+	useEffect(() => {
+		form.resetFields();
+		if (data && editId) {
+			form.setFieldValue("username", data.username);
+			form.setFieldValue("showname", data.showname);
+			form.setFieldValue("domainId", data.domainId);
+			form.setFieldValue("deptId", data.deptId);
+			form.setFieldValue("officerId", data.officerId);
+			form.setFieldValue("phoneNumber", data.phoneNumber);
+			form.setFieldValue("enabled", data.enabled)
+		}
+	}, [data]);
+	useEffect(() => {
+		if (!data && domainId) {
+			form.setFieldValue("domainId", domainId);
+			form.setFieldValue("deptId", domainId);
+		}
+	}, [domainId, data]);
+	return (
+		<div className="relative">
+			{isLoading && (
+				<div className="absolute h-full inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10">
+					<Spin />
+				</div>
+			)}
+			<Form
+				disabled={isLoading}
+				form={form}
+				layout="vertical"
+				requiredMark="optional"
+				autoComplete="off"
+				onFinish={handleFinish}>
+				{canManageAnyStaff && (
+					<Form.Item
+						name={"domainId"}
+						label="所属域"
+						rules={[{ required: true }]}>
+						<DepartmentSelect
+							rootId={isRoot ? undefined : domainId}
+							domain={true}
+						/>
+					</Form.Item>
+				)}
+				<Form.Item
+					name={"deptId"}
+					label="所属单位"
+					rules={[{ required: true }]}>
+					<DepartmentSelect rootId={isRoot ? undefined : domainId} />
+				</Form.Item>
+				<Form.Item
+					rules={[{ required: true }]}
+					name={"username"}
+					label="帐号">
+					<Input allowClear
+						autoComplete="new-username" // 使用非标准的自动完成值
+						spellCheck={false}
+					/>
+				</Form.Item>
+				<Form.Item
+					rules={[{ required: true }]}
+					name={"showname"}
+					label="姓名">
+					<Input allowClear
+						autoComplete="new-name" // 使用非标准的自动完成值
+						spellCheck={false}
+					/>
+				</Form.Item>
+				<Form.Item
+					rules={[
+						{
+							required: false,
+							pattern: /^\d{5,18}$/,
+							message: "请输入正确的证件号（数字）"
+						}
+					]}
+					name={"officerId"}
+					label="证件号">
+					<Input autoComplete="off" spellCheck={false} allowClear />
+				</Form.Item>
+				<Form.Item
+					rules={[
+						{
+							required: false,
+							pattern: /^\d{6,11}$/,
+							message: "请输入正确的手机号（数字）"
+						}
+					]}
+					name={"phoneNumber"}
+					label="手机号">
+					<Input autoComplete="new-phone" // 使用非标准的自动完成值
+						spellCheck={false} allowClear />
+				</Form.Item>
+				<Form.Item label="密码" name={"password"}>
+					<Input.Password spellCheck={false} visibilityToggle autoComplete="new-password" />
+				</Form.Item>
+				{editId && <Form.Item label="是否启用" name={"enabled"}>
+					<Switch></Switch>
+				</Form.Item>}
+			</Form>
+		</div>
+	);
 }

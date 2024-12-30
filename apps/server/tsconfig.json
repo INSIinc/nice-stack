@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
@@ -7,17 +7,12 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
+    "target": "ES2020",
     "sourceMap": true,
     "outDir": "./dist",
-    "strictNullChecks": false,
-    // "baseUrl": "./",
-    // "incremental": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "incremental": true,
     // "skipLibCheck": true,
-    // "strictNullChecks": false,
-    // "noImplicitAny": false,
-    // "strictBindCallApply": false,
-    // "forceConsistentCasingInFileNames": false,
-    // "noFallthroughCasesInSwitch": false
-  }
+  },
 }

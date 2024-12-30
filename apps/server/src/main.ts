@@ -1,16 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { TrpcRouter } from './trpc/trpc.router';
-import { env } from './env';
+import { WebSocketService } from './socket/websocket.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // 启用 CORS 并允许所有来源
   app.enableCors({
-    origin: [env.APP_URL],
-    credentials: true
+    origin: "*",
   });
+  const wsService = app.get(WebSocketService);
+  await wsService.initialize(app.getHttpServer());
   const trpc = app.get(TrpcRouter);
   trpc.applyMiddleware(app);
-  await app.listen(3000);
+
+  const port = process.env.SERVER_PORT || 3000;
+ 
+  await app.listen(port);
+
 }
 bootstrap();

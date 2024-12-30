@@ -1,3 +1,110 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.ag-custom-dragging-class {
+	@apply border-b-2 border-primaryHover;
+}
+
+
+.ant-popover-inner {
+	padding: 0 !important;
+	@apply border border-gray-300;
+}
+
+.ag-header-viewport {
+	z-index: 0;
+}
+
+.ag-cell {
+	display: flex;
+	align-items: center;
+	/* 垂直居中 */
+}
+
+.ag-cell .ag-cell-wrapper {
+	display: flex;
+	align-items: center;
+	/* 垂直居中 */
+}
+
+/* styles.css */
+.ant-table {
+	background-color: transparent !important;
+}
+
+.ant-table-thead > tr > th {
+	background-color: transparent !important;
+}
+
+.ant-table-tbody > tr > td {
+	background-color: transparent !important;
+	border-bottom-color: transparent !important;
+}
+
+.ant-table-cell {
+	background-color: transparent !important;
+	border-bottom-color: transparent !important;
+}
+
+/* 滚动条轨道 */
+::-webkit-scrollbar-track {
+	border-radius: 10px;
+	@apply bg-gray-200;
+}
+
+/* 滚动块 */
+::-webkit-scrollbar-thumb {
+	/* background-color: #888; */
+
+	border-radius: 10px;
+	border: 2px solid #f0f0f0;
+	@apply hover:bg-primaryHover transition-all bg-gray-400 ease-in-out rounded-full;
+}
+
+/* 鼠标悬停在滚动块上 */
+::-webkit-scrollbar-thumb:hover {
+	background-color: "tr";
+}
+
+::-webkit-scrollbar {
+	height: 8px;
+	width: 10px;
+	/* 滚动条宽度 */
+}
+
+/* 覆盖 Ant Design 的默认样式  raido button左侧的按钮*/
+.ant-radio-button-wrapper-checked:not(
+		.ant-radio-button-wrapper-disabled
+	)::before {
+	background-color: unset !important;
+}
+
+.state-select.ant-select-selector {
+	cursor: pointer !important;
+	/* 强制覆盖默认的禁止样式 */
+}
+
+.ant-tabs-nav-operations {
+	display: none !important;
+}
+
+.no-wrap-header .ant-table-thead > tr > th {
+	white-space: nowrap;
+}
+
+.custom-table .ant-table-cell {
+	white-space: normal; /* 允许换行 */
+	word-wrap: break-word; /* 强制单词换行 */
+}
+.custom-table .ant-table-cell {
+	border: 1px solid #ddd; /* 设置单元格边框 */
+}
+
+.custom-table .ant-table-tbody > tr > td {
+	border-bottom: 1px solid #ddd; /* 设置表格行底部边框 */
+}
+
+.custom-table .ant-table-tbody > tr:last-child > td {
+	border-bottom: none; /* 去除最后一行的底部边框 */
+}

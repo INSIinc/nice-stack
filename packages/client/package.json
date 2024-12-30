@@ -1,0 +1,39 @@
+{
+    "name": "@nicestack/client",
+    "version": "1.0.0",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "tinycolor2": "^1.6.0"
+    },
+    "peerDependencies": {
+        "react": "18.2.0",
+        "@nicestack/common": "workspace:^",
+        "@tanstack/query-async-storage-persister": "^5.51.9",
+        "@tanstack/react-query": "^5.51.21",
+        "@tanstack/react-query-persist-client": "^5.51.9",
+        "@trpc/client": "11.0.0-rc.456",
+        "@trpc/react-query": "11.0.0-rc.456",
+        "@trpc/server": "11.0.0-rc.456",
+        "lib0": "^0.2.98",
+        "yjs": "^13.6.20",
+        "mitt": "^3.0.1"
+    },
+    "devDependencies": {
+        "typescript": "^5.5.4",
+        "tsup": "^8.3.5",
+        "rimraf": "^6.0.1"
+    }
+}
