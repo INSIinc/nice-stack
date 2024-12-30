@@ -1,0 +1,109 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=defender_app
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=Letusdoit000
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./volumes/minio:/minio_data
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    command: minio server /minio_data --console-address ":9001" -address ":9000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://192.168.2.1:9001/minio/health/live"
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8082:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=insiinc@outlook.com
+      - PGADMIN_DEFAULT_PASSWORD=Letusdoit000
+  tusd:
+    image: tusproject/tusd
+    ports:
+      - "8080:8080"
+    environment:
+      - AWS_REGION=cn-north-1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+    command: -verbose -s3-bucket app -s3-endpoint http://minio:9000
+    volumes:
+      - ./volumes/tusd:/data
+    depends_on:
+      - minio
+  redis:
+      image: redis:latest
+      ports:
+        - "6379:6379"
+      volumes:
+        - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+        - ./volumes/redis:/data
+      command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+  # restic:
+  #   image: restic/restic:latest
+  #   environment:
+  #     - RESTIC_REPOSITORY=/backup
+  #     - RESTIC_PASSWORD=Letusdoit000
+  #   volumes:
+  #     - ./volumes/postgres:/data
+  #     - ./volumes/restic-cache:/root/.cache/restic
+  #     - ./backup:/backup   # 本地目录挂载到容器内的 /backup
+  #     - ./config/backup.sh:/usr/local/bin/backup.sh # Mount your script inside the container
+  #   entrypoint:  /usr/local/bin/backup.sh
+  #   depends_on:
+  #     - db
+  # web:
+  #   image: td-web:latest
+  #   ports:
+  #     - "80:80"
+  #   environment:
+  #     - VITE_APP_SERVER_IP=192.168.79.77
+  #     - VITE_APP_VERSION=0.3.0
+  #     - VITE_APP_APP_NAME=两道防线管理后台
+  # server:
+  #   image: td-server:latest
+  #   ports:
+  #     - "3000:3000"
+  #     - "3001:3001"
+  #   environment:
+  #     - DATABASE_URL=postgresql://root:Letusdoit000@db:5432/defender_app?schema=public
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - REDIS_PASSWORD=Letusdoit000
+  #     - TUS_URL=http://192.168.2.1:8080
+  #     - JWT_SECRET=/yT9MnLm/r6NY7ee2Fby6ihCHZl+nFx4OQFKupivrhA=
+  #     - PUSH_URL=http://dns:9092
+  #     - PUSH_APPID=123
+  #     - PUSH_APPSECRET=123
+  #     - MINIO_HOST=minio
+  #     - ADMIN_PHONE_NUMBER=13258117304
+  #     - DEADLINE_CRON=0 0 8 * * *
+  #   depends_on:
+  #     - db
+  #     - redis
+
+networks:
+  default:
+    name: defender-app

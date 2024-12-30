@@ -14,5 +14,6 @@ export default async function (job: Job<any, any, CustomJobType>) {
             logger.log(`push message ${job.data.id}`)
             pushService.messagePush(job.data.registerToken, job.data.messageContent)
             break
+      
     }
 }

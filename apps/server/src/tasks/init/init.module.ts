@@ -9,7 +9,7 @@ import { DepartmentModule } from '@server/models/department/department.module';
 import { TermModule } from '@server/models/term/term.module';
 
 @Module({
-  imports: [MinioModule, AuthModule, AppConfigModule,  StaffModule, DepartmentModule, TermModule],
+  imports: [MinioModule, AuthModule, AppConfigModule, StaffModule, DepartmentModule, TermModule],
   providers: [InitService, GenDevService],
   exports: [InitService]
 })

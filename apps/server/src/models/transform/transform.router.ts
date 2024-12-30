@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { TransformService } from './transform.service';
 import { TransformMethodSchema} from '@nicestack/common';
 import { TrpcService } from '@server/trpc/trpc.service';
-
 @Injectable()
 export class TransformRouter {
   constructor(

@@ -1,5 +1,3 @@
-import { troubleUnDetailSelect } from "./select";
-
 export enum SocketMsgType {
 	NOTIFY,
 }

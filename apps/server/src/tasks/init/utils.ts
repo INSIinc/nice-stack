@@ -2,12 +2,14 @@ import { db, getRandomElement, getRandomIntInRange, getRandomTimeInterval, Objec
 import dayjs from 'dayjs';
 export interface DevDataCounts {
     deptCount: number;
+
     staffCount: number
     termCount: number
 }
 export async function getCounts(): Promise<DevDataCounts> {
     const counts = {
         deptCount: await db.department.count(),
+
         staffCount: await db.staff.count(),
         termCount: await db.term.count(),
     };

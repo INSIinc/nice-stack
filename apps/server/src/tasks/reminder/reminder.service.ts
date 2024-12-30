@@ -7,9 +7,8 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import dayjs from 'dayjs';
-import { db, getUniqueItems, MessageMethodSchema, TroubleType, truncateString } from '@nicestack/common';
+
 import { MessageService } from '@server/models/message/message.service';
-import { extractUniqueStaffIds } from '@server/models/department/utils';
 
 /**
  * 提醒服务类
@@ -75,6 +74,8 @@ export class ReminderService {
      * 发送截止日期提醒
      */
     async remindDeadline() {
+        this.logger.log('开始检查截止日期以发送提醒。');
 
+   
     }
 }

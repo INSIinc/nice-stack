@@ -1,5 +1,5 @@
 import { db, Post, PostType, UserProfile, VisitType } from "@nicestack/common";
-import { getTroubleWithRelation } from "../trouble/utils";
+
 export async function setPostRelation(params: { data: Post, staff?: UserProfile }) {
     const { data, staff } = params
     const limitedComments = await db.post.findMany({
@@ -32,13 +32,13 @@ export async function setPostRelation(params: { data: Post, staff?: UserProfile 
             visitType: VisitType.READED,
         },
     });
-    const trouble = await getTroubleWithRelation(data.referenceId, staff)
+    // const trouble = await getTroubleWithRelation(data.referenceId, staff)
     Object.assign(data, {
         readed,
         readedCount,
         limitedComments,
         commentsCount,
-        trouble
+        // trouble
     })
 
 }

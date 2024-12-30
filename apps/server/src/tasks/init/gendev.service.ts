@@ -22,6 +22,7 @@ import {
   getCounts,
   getRandomImageLinks
 } from './utils';
+
 import { StaffService } from '@server/models/staff/staff.service';
 @Injectable()
 export class GenDevService {
@@ -40,6 +41,7 @@ export class GenDevService {
   deptGeneratedCount = 0;
   constructor(
     private readonly appConfigService: AppConfigService,
+
     private readonly departmentService: DepartmentService,
     private readonly staffService: StaffService,
     private readonly termService: TermService,
@@ -51,7 +53,7 @@ export class GenDevService {
       await this.generateDepartments(3, 6);
       await this.generateTerms(2, 6);
       await this.generateStaffs(4);
-
+    
     } catch (err) {
       this.logger.error(err);
     }
@@ -182,8 +184,7 @@ export class GenDevService {
       }
     }
   }
-
-
+  
   private async createDepartment(
     name: string,
     parentId?: string,

@@ -4,7 +4,6 @@ import type {
 	Term,
 	Message,
 	Post,
-	Trouble,
 	RoleMap,
 } from "@prisma/client";
 import { SocketMsgType, RolePerms } from "./enum";

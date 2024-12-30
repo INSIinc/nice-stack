@@ -26,7 +26,6 @@ export class TrpcRouter {
     private readonly taxonomy: TaxonomyRouter,
     private readonly role: RoleRouter,
     private readonly rolemap: RoleMapRouter,
-
     private readonly transform: TransformRouter,
     private readonly auth: AuthRouter,
     private readonly app_config: AppConfigRouter,

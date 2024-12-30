@@ -9,7 +9,6 @@ import {
 	TroubleType,
 	VisitType,
 } from "./enum";
-import { troubleUnDetailSelect } from "./select";
 
 export const InitRoles: {
 	name: string;

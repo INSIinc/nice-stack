@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TrpcService } from '@server/trpc/trpc.service';
-import { ChangedRows, ObjectType, Prisma } from '@nicestack/common';
+import { Prisma } from '@nicestack/common';
 import { PostService } from './post.service';
 import { z, ZodType } from 'zod';
 const PostCreateArgsSchema: ZodType<Prisma.PostCreateArgs> = z.any();
@@ -15,7 +15,7 @@ export class PostRouter {
   constructor(
     private readonly trpc: TrpcService,
     private readonly postService: PostService,
-  ) {}
+  ) { }
   router = this.trpc.router({
     create: this.trpc.protectProcedure
       .input(PostCreateArgsSchema)

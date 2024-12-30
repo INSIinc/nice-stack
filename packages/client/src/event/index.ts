@@ -4,7 +4,7 @@
  */
 
 import mitt from 'mitt';
-import { DepartmentDto, ObjectType, RoleMapDto, StaffDto, TermDto, TroubleDto } from '@nicestack/common';
+import { DepartmentDto, ObjectType, RoleMapDto, StaffDto, TermDto, } from '@nicestack/common';
 
 /**
  * 枚举类型，表示可以对数据执行的CRUD操作。
@@ -38,7 +38,6 @@ type EmitChangeFunction<T> = (data: Partial<T>, operation: CrudOperation) => voi
  */
 interface EmitChangeHandlers {
     [ObjectType.STAFF]: EmitChangeFunction<StaffDto>; // 员工数据变更处理器
-    [ObjectType.TROUBLE]: EmitChangeFunction<TroubleDto>; // 问题数据变更处理器
     [ObjectType.ROLE_MAP]: EmitChangeFunction<RoleMapDto>; // 角色映射数据变更处理器
     [ObjectType.DEPARTMENT]: EmitChangeFunction<DepartmentDto>; // 部门数据变更处理器
     [ObjectType.TERM]: EmitChangeFunction<TermDto> // 术语数据变更处理器
@@ -61,21 +60,6 @@ const emitChangeHandlers: EmitChangeHandlers = {
         // 发出员工数据变更事件
         EventBus.emit("dataChanged", {
             type: ObjectType.STAFF,
-            operation,
-            data: [rowData]
-        });
-    },
-
-    [ObjectType.TROUBLE]: (data, operation) => {
-        // 转换问题数据，包含额外字段
-        const rowData = {
-            ...data,
-            dept_name: data.department?.name,
-            possible_result: data.possibleResult,
-        };
-        // 发出问题数据变更事件
-        EventBus.emit("dataChanged", {
-            type: ObjectType.TROUBLE,
             operation,
             data: [rowData]
         });
